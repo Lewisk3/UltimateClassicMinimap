@@ -1,0 +1,722 @@
+version "3.2"
+
+// Waypoints
+class WaypointObject : Object
+{
+	String nickname;
+	Color col;
+	vector2 pos;
+	
+	static WaypointObject Init(String nickname, Color col, vector2 pos)
+	{
+		let wp = new("WaypointObject");
+		if(wp) 
+		{
+			wp.nickname = nickname;
+			wp.col = col;
+			wp.pos = pos;
+		}
+		return wp;
+	}
+}
+class I_WaypointStorage : Inventory
+{
+	Array<WaypointObject> waypoints;
+	Default
+	{
+		inventory.maxamount 1;
+		+INVENTORY.UNDROPPABLE
+		+INVENTORY.UNTOSSABLE
+	}
+	
+	void AddWaypoint(String nickname, Color col, vector2 pos)
+	{
+		let wp = WaypointObject.Init(nickname,col,pos);
+		if(wp) waypoints.Push(wp);
+	}
+	
+	void RemoveNamedWaypoint(String nickname)
+	{
+		for(int i = 0; i < waypoints.Size(); i++)
+		{	
+			if(nickname == waypoints[i].nickname) 
+			{
+				waypoints.Delete(i);
+				break;
+			}
+		}
+	}
+	void RemoveCloseWaypoint(vector2 pos)
+	{
+		for(int i = 0; i < waypoints.Size(); i++)
+		{	
+			if( (waypoints[i].pos - pos).Length() < 5 ) 
+			{
+				waypoints.Delete(i);
+				break;
+			}
+		}
+	}
+}
+
+// Minimap and Radar
+class ButtonDetectionEVH : EventHandler 
+{
+	bool waypointmenu_forceopen;  // Triggers waypoint menu
+	bool waypointmenu_forceclose; 
+	ui Shape2D bg_circle;
+	ui vector2 baseoffs;
+	ui TextureID curpix; 
+	ui TextureID pix;
+	ui TextureID indpix;
+	ui double prevMS;
+	ui double deltatime;
+	ui double map_size;
+	ui double scrw;
+	ui double scrh;
+	ui double plr_rot;
+	ui double curzoom;
+	ui vector2 mappos; // Interpolated player position.
+	Array<int> btn_lines;	
+	
+	// CVars
+	CVar cv_xoffset;
+	CVar cv_yoffset;
+	CVar cv_mapfollow;
+	CVar cv_mapshowall;
+	CVar cv_hidden;
+	CVar cv_drawmap;
+	CVar cv_fullmapsize;
+	CVar cv_maxmapsize;
+	CVar cv_domaprotation;
+	CVar cv_showdist;
+	CVar cv_showrep;
+	CVar cv_mapsize;
+	CVar cv_radarzoom;
+	CVar cv_drawplayer;
+	CVar cv_renderdistance;
+	CVar cv_radardistance;
+	CVar cv_switchdistance;
+	CVar cv_color_normal; 
+	CVar cv_color_solid; 
+	CVar cv_color_action; 
+	CVar cv_color_border; 
+	CVar cv_color_backg; 
+	CVar cv_color_lum;
+	CVar cv_color_alpha;
+	CVar cv_color_backgalpha;
+	CVar wp_name;
+	CVar wp_color;
+	
+	// Held button states
+	enum MBT
+	{
+		MBT_UP	    = 1,
+		MBT_DOWN 	= 1<<1,
+		MBT_LEFT	= 1<<2,
+		MBT_RIGHT   = 1<<3,
+		MBT_ZOOMIN  = 1<<4,
+		MBT_ZOOMOUT = 1<<5
+	};
+	uint mapbtns;
+	
+	// CVar Registry
+	override void OnRegister()
+	{
+		PlayerInfo plr = players[consoleplayer];
+		if(!plr) return;
+	
+		cv_xoffset    		= CVar.GetCVar("ucm_xoffset", plr);
+		cv_yoffset    		= CVar.GetCVar("ucm_yoffset", plr);
+		cv_mapfollow	 	= CVar.GetCVar("ucm_mapfollow", plr);
+		cv_mapshowall 		= CVar.GetCVar("ucm_mapshowall", plr);
+		cv_hidden			= CVar.GetCVar("ucm_hide", plr);
+		cv_drawmap          = CVar.GetCVar("ucm_drawmap", plr);
+		cv_fullmapsize		= CVar.GetCVar("ucm_drawfullscreen", plr);
+		cv_maxmapsize		= CVar.GetCVar("ucm_drawmaxsize", plr);
+		cv_domaprotation	= CVar.GetCVar("ucm_drawrotation", plr);
+		cv_showdist			= CVar.GetCVar("ucm_showdistance", plr);
+		cv_showrep			= CVar.GetCVar("ucm_showrepeatable", plr);
+		cv_mapsize			= CVar.GetCVar("ucm_mapsize", plr);
+		cv_radarzoom		= CVar.GetCVar("ucm_radarzoom", plr);
+		cv_renderdistance	= CVar.GetCVar("ucm_maprenderdist", plr);
+		cv_drawplayer		= CVar.GetCVar("ucm_drawplayer", plr);
+		cv_radardistance	= CVar.GetCVar("ucm_radardist", plr);
+		cv_switchdistance   = CVar.GetCVar("ucm_maxswitchdist", plr); 
+		cv_color_normal		= CVar.GetCVar("ucm_color_normal", plr); 
+		cv_color_solid		= CVar.GetCVar("ucm_color_solid", plr); 
+		cv_color_action		= CVar.GetCVar("ucm_color_action", plr); 
+		cv_color_border		= CVar.GetCVar("ucm_color_border", plr);
+		cv_color_backg		= CVar.GetCVar("ucm_color_backg", plr);
+		cv_color_lum		= CVar.GetCVar("ucm_color_lum", plr);
+		cv_color_alpha		= CVar.GetCVar("ucm_color_alpha", plr);
+		cv_color_backgalpha	= CVar.GetCVar("ucm_color_backgalpha", plr);
+		
+		wp_name  = CVar.GetCVar("waypoint_name",plr);
+		wp_color = CVar.GetCVar("waypoint_color",plr);
+	}
+		
+	override bool InputProcess(InputEvent e)
+	{
+		if(waypointmenu_forceopen)
+		{	
+		   Menu.SetMenu("UCMWaypoints");
+		   self.SendNetworkEvent("ucm.waypointmenu.done");
+		}
+		return false;
+	}
+	
+	override void WorldTick()
+	{
+		if((mapbtns & MBT_ZOOMIN) && cv_radarzoom.GetFloat() > 1) 
+			cv_radarzoom.SetFloat(cv_radarzoom.GetFloat()-0.1);
+		if((mapbtns & MBT_ZOOMOUT) && cv_radarzoom.GetFloat() < 100)
+			cv_radarzoom.SetFloat(cv_radarzoom.getFloat()+0.1);
+		
+		if(cv_xoffset.GetInt() < 0 && cv_yoffset.GetInt() < 0)
+			self.SendNetworkEvent("align.upperleft");
+	}
+		
+	override void RenderOverlay(RenderEvent e)
+	{
+		let plr = players[consoleplayer].mo;
+		if(!plr) return;	
+		
+		// Setup
+		scrw = Screen.GetWidth();
+		scrh = Screen.GetHeight();
+		if(mappos.x+mappos.y == 0) mappos = plr.pos.xy; 
+		
+		// Face animations
+		int faceind = ((Level.time / 35) % 3);
+		if(faceind > 2) faceind = 0;
+		
+		// Textures
+		TextureID switchtex  = TexMan.CheckForTexture("SWTIND",TexMan.Type_Any);
+		TextureID rswitchtex = TexMan.CheckForTexture("RSWTIND",TexMan.Type_Any);
+		TextureID plrtex     = TexMan.CheckForTexture("STFST0" .. faceind,TexMan.Type_Any);
+		if(   !pix) pix    = TexMan.CheckForTexture("PXL",TexMan.Type_Any);
+		if(!indpix) indpix = TexMan.CheckForTexture("INDPXL",TexMan.Type_Any);
+		curpix = pix;
+		
+		// CVars 
+		Vector2 useroffs    = (cv_xoffset.GetInt(), cv_yoffset.GetInt());
+		bool dontShowAll 	= !cv_mapshowall.getBool() && !level.allmap;
+		bool hidden 		= cv_hidden.GetBool() && map_size <= 10; 
+		bool fullmapsize 	= cv_fullmapsize.GetBool(); 
+		bool maxmapsize  	= cv_maxmapsize.GetBool(); 
+		bool domaprotation  = cv_domaprotation.GetBool(); 
+		bool showdist 		= cv_showdist.GetBool(); 
+		bool showrep  		= cv_showrep.GetBool();
+		double to_mapsize 		  = fullmapsize ? scrw : (!maxmapsize ? cv_mapsize.getFloat() : 512);
+		double size_mod   		  = fullmapsize ? scrw/128. : map_size/128.;
+		double minimap_renderdist = cv_renderdistance.getInt();
+		
+		// Colors
+		int col_bright      = int(255.*cv_color_lum.getFloat()) << 24;
+		int alpha_mask      = 0xFF << 24;
+		Color linecol 		= col_bright + cv_color_normal.getInt();  
+		Color solid_linecol = col_bright + cv_color_solid.getInt(); 
+		Color acton_linecol = col_bright + cv_color_action.getInt(); 
+		Color radrcol       = col_bright + cv_color_border.getInt(); 
+		Color backgcol      = alpha_mask + cv_color_backg.getInt(); 
+		double line_alpha   = cv_color_alpha.getFloat();
+		
+		// Size and Offsets
+		curzoom = Lerp(curzoom, cv_radarzoom.GetFloat(), 0.25*deltatime);
+		if(curzoom == 0) curzoom = 1;
+		
+		if(!cv_hidden.GetBool())
+			map_size = Lerp(map_size, to_mapsize*(scrw/1920.), 0.25*deltatime);
+		else 
+			map_size = Lerp(map_size, 0, 0.25*deltatime);
+			
+		if(fullmapsize) 
+			baseoffs = (scrw/2. + (map_size/2.), scrh/2. + (map_size/2.)) - ((35,0) * size_mod);
+		else if(maxmapsize) 
+		{
+			float xres = scrw/1920.;
+			float yres = scrh/1080.;
+			double scrside = useroffs.x > scrw/2. ? -600 : -100;
+			baseoffs.x = Lerp(baseoffs.x,scrside*xres,0.25*deltatime);
+			baseoffs.y = Lerp(baseoffs.y,35*yres,0.25*deltatime);
+		}
+		else
+		{
+			baseoffs.x = Lerp(baseoffs.x,(25*size_mod)-useroffs.x,0.25*deltatime);
+			baseoffs.y = Lerp(baseoffs.y,(25*size_mod)-useroffs.y,0.25*deltatime);
+		}
+		
+		// Rotation and Positioning
+		if(cv_mapfollow.GetBool())
+		{
+			plr_rot = Lerp(plr_rot, domaprotation ? plr.angle : 90, 0.5*deltatime);
+			mappos.x = Lerp(mappos.x, plr.pos.x, 0.5*deltatime);
+			mappos.y = Lerp(mappos.y, plr.pos.y, 0.5*deltatime);
+		}
+		else
+		{
+			double movspd = plr.player.cmd.buttons & BT_SPEED ? 6 : 3;
+			plr_rot = Lerp(plr_rot, 90, 0.25*deltatime);
+			if(mapbtns & MBT_UP    ) mappos.y += movspd;
+			if(mapbtns & MBT_DOWN  ) mappos.y -= movspd;
+			if(mapbtns & MBT_LEFT  ) mappos.x -= movspd;
+			if(mapbtns & MBT_RIGHT ) mappos.x += movspd;
+		}
+		Vector2 dp = Actor.RotateVector( (0,0), plr_rot-90 );
+		Vector2 map_middle = (dp.x-baseoffs.x+(156*size_mod),dp.y-baseoffs.y+(140*size_mod));
+		
+		// Draw Minimap BG
+		if(!hidden) 
+			FillCircle(map_middle.x,map_middle.y,MAP_SIZE+4,backgcol,cv_color_backgalpha.getFloat());
+		
+		// Draw Minimap		
+		if( cv_drawmap.getBool() && !hidden )
+		{
+			for (int i = 0; i < Level.Lines.Size(); i++)
+			{
+				Line ln = Level.Lines[i];
+				if( !(ln.flags & Line.ML_MAPPED) && dontShowAll ) continue;
+			
+				Vector2 ln_pos = ln.v1.p;
+				Vector2 ln_len = ln.v2.p;
+				
+				// Check render distance
+				if(
+					   abs(ln_pos.x-mappos.x) > minimap_renderdist
+					&& abs(ln_len.x-mappos.x) > minimap_renderdist 
+					|| abs(ln_pos.y-mappos.y) > minimap_renderdist
+					&& abs(ln_len.y-mappos.y) > minimap_renderdist)
+				{
+					continue;
+				}
+					
+				Vector2 amapoffs = -baseoffs+((156, 140)*size_mod);
+				ln_pos = Actor.RotateVector(SwapVector(ln_pos-mappos),plr_rot+180);
+				ln_len = Actor.RotateVector(SwapVector(ln_len-mappos),plr_rot+180);					
+				ln_pos += amapoffs*curzoom;
+				ln_len += amapoffs*curzoom;
+				ln_pos /= curzoom;
+				ln_len /= curzoom;
+			
+				bool actionable = ln.special & SPAC_Cross || ln.special & SPAC_Use;
+				Color drawcol = (ln.flags & Line.ML_BLOCKING) ? solid_linecol : actionable ? acton_linecol : linecol;				
+				drawLine(ln_pos.x,ln_pos.y,ln_len.x,ln_len.y,drawcol, map_middle, MAP_SIZE, line_alpha);
+			}
+		}
+		
+		// Draw Border
+		if(!hidden && !fullmapsize)
+			drawCircle(map_middle.x,map_middle.y, MAP_SIZE+4, radrcol, line_alpha);
+		
+		// Draw Switches
+		if(switchtex && rswitchtex && plrtex && !hidden)
+		{			
+			double maxswitch = cv_switchdistance.getInt();
+			
+			for(uint i = 0; i < btn_lines.Size(); i++)
+			{
+				if(maxswitch <= 0) break;
+				
+				Line ln = Level.Lines[btn_lines[i]];
+				if(!ln) continue;
+				if( ln.special == 0 ) continue;		
+				double dist = VDist2D( (ln.v1.p.x/2 + ln.v2.p.x/2, (ln.v2.p.y/2 + ln.v2.p.y/2)), mappos ) / 32;	
+				if(dist > maxswitch) continue;
+				double l_angle = VectorAngle(ln.delta.x,ln.delta.y);		
+				int x = (mappos.x - (ln.v1.p.x/2 + ln.v2.p.x/2) );
+				int y = (mappos.y - (ln.v1.p.y/2 + ln.v2.p.y/2) );
+				Vector2 dp = Actor.RotateVector( SwapVector((x,y)), plr_rot );
+				dp /= curzoom;
+				
+				vector2 fullbaseoffs = baseoffs/size_mod;
+				vector2 finalpos = dp+map_middle;
+				finalpos = clamp_vec(finalpos, map_middle, MAP_SIZE-4);
+				curpix = ((ln.flags & Line.ML_REPEAT_SPECIAL) && showrep) ? rswitchtex : switchtex;
+				double swscale = clamp(size_mod, 0.25, 2.0);
+				plotPixel(finalpos.x, finalpos.y, scale:(swscale,swscale));
+				if(showdist) Screen.DrawText("dbigfont",Font.CR_GREEN,finalpos.x-5,finalpos.y-5, string.format("%d",dist));
+			}
+		}
+	
+		// Draw Radar
+		if(!hidden) 
+		{			
+			double maxdist = cv_radardistance.getFloat();
+			ThinkerIterator act_it = ThinkerIterator.Create("Actor");
+			Actor obj;		
+			while(obj = Actor(act_it.Next()))
+			{		
+				if(maxdist <= 0) break;
+				if(!obj.bSHOOTABLE) continue;
+				double x = mappos.x - obj.pos.x;
+				double y = mappos.y - obj.pos.y;
+				
+				int dis = obj.Distance2D(plr);
+				if( dis < (maxdist*10.) )
+				{
+					double frontangle = plr_rot+180;
+					vector2 delta = Actor.RotateVector( SwapVector((x,y)), frontangle);
+					delta.x /= curzoom;
+					delta.y /= curzoom;
+					if( !(obj is plr.GetClass()) && obj.target )
+					{
+						vector2 finalpos = ((map_middle.x-delta.x), (map_middle.y-delta.y));
+						double drawdist; 
+						[finalpos, drawdist] = clamp_vec(finalpos, map_middle, MAP_SIZE-4);
+						
+						double dAlpha = (drawdist>MAP_SIZE-4 ? 0.6 : 1.0);
+						double dScale = 2.0;
+						dScale *= size_mod;
+						Color dColor = Color(90,0xFF,0,0);
+						dScale *= clamp(1.0-(drawdist/512.), 0.5, 1.0);
+						dScale = clamp(dScale, 0.5, 3.0);
+						
+						bool hastarget = dontShowAll ? (obj.target != NULL) : true;
+						if(obj.bFRIENDLY) dColor = Color(65, 0xFF, 0xFF, 0);
+						if(hastarget || obj.bFRIENDLY) 
+						{
+							curpix = indpix;
+							plotPixel(finalpos.x, finalpos.y, dColor, (dScale,dScale), dAlpha*line_alpha);
+						}
+					}
+				}
+			}
+			
+			// Draw Waypoints
+			if(!hidden)
+			{
+				let wp_data = I_WaypointStorage(plr.FindInventory("I_WaypointStorage"));
+				if(wp_data)
+				{
+					for(int i = 0; i < wp_data.waypoints.Size(); i++)
+					{
+						let wp = WaypointObject(wp_data.waypoints[i]);
+						double x = mappos.x - wp.pos.x;
+						double y = mappos.y - wp.pos.y;
+						double frontangle = plr_rot+180;
+						vector2 delta = Actor.RotateVector( SwapVector((x,y)), frontangle);
+						delta.x /= curzoom;
+						delta.y /= curzoom;	
+						vector2 finalpos = ((map_middle.x-delta.x), (map_middle.y-delta.y));
+						double wpscale = 4.0 * (scrw/1920.);
+						finalpos = clamp_vec(finalpos, map_middle, MAP_SIZE);
+						curpix = pix;
+						plotPixel(finalpos.x, finalpos.y, wp.col, (wpscale,wpscale));
+						Screen.DrawText("dbigfont",Font.CR_GOLD,finalpos.x-(wpscale/2),finalpos.y-(wpscale/2), wp.nickname);
+					}
+				}
+			}
+		 
+			// Draw Player
+			if(cv_drawplayer.GetBool())
+			{
+				double plrscale = clamp(0.75*size_mod, 0.25, 2.0);
+				curpix = plrtex;
+				if(cv_mapfollow.GetBool())
+					plotPixel(map_middle.x-(16*plrscale),map_middle.y-(16*plrscale), scale:(plrscale,plrscale));
+				else
+				{
+					double x = mappos.x - plr.pos.x;
+					double y = mappos.y - plr.pos.y;
+					double frontangle = plr_rot+180;
+					vector2 delta = Actor.RotateVector( SwapVector((x,y)), frontangle);
+					delta.x /= curzoom;
+					delta.y /= curzoom;		
+					vector2 finalpos = ((map_middle.x-delta.x), (map_middle.y-delta.y));
+					if(VDist2D(finalpos, map_middle) < MAP_SIZE+8)
+						plotPixel(finalpos.x-(16*plrscale),finalpos.y-(16*plrscale), scale:(plrscale,plrscale));
+				}
+			}
+		}
+		
+		// Delatime
+		if(!prevMS)
+		{
+			prevMS = MSTime();
+			return;
+		}
+		double ftime = MSTime()-prevMS;
+		prevMS = MSTime();
+		double dtime = 1000.0 / 60.0;
+		deltatime = (ftime/dtime);
+		
+		// Waypoint menu
+		if(waypointmenu_forceclose)
+		{
+			let m = Menu.getCurrentMenu();
+			if(m) m.Close();
+			self.SendNetworkEvent("ucm.waypointmenu.done");
+		}
+	}
+
+	// Fetch Switches
+	void FindSwitches()
+	{	
+		btn_lines.Clear();
+		bool mustuse = CVar.FindCVar("ucm_mustuse").getBool();
+		int specific = CVar.FindCVar("ucm_specific").getInt();
+		for(uint i = 0; i < Level.Lines.Size(); i++)
+		{
+			Line ln = Level.Lines[i];
+			bool isactivatable = (ln.special & (SPAC_Use|SPAC_Impact|SPAC_Push));
+	
+			if(specific && ln.special == specific) btn_lines.Push(i);
+			else if(specific) continue;
+			else
+			{
+				if (isactivatable && mustuse) 
+					btn_lines.Push(i);
+				else if(!mustuse && ln.special) 
+					btn_lines.Push(i);
+			}
+		}
+	}
+	override void WorldLoaded(WorldEvent  e)
+	{
+		FindSwitches();
+	}
+	
+	// Buttons
+	override void NetworkProcess(ConsoleEvent e)
+	{
+		PlayerInfo plr = players[e.Player];
+		if(!plr) return;
+		
+		// Waypoint triggers
+		if(e.Name == "ucm.waypointmenu.open" ) 
+		{
+			waypointmenu_forceclose = false;
+			waypointmenu_forceopen = true;
+		}
+		if(e.Name == "ucm.waypointmenu.done" ) 
+		{
+			waypointmenu_forceclose = false;
+			waypointmenu_forceopen = false;
+		}
+		if(e.Name == "ucm.waypointmenu.apply")
+		{
+			// Add waypoint to player data
+			let wp_data = I_WaypointStorage(plr.mo.FindInventory("I_WaypointStorage"));
+			if(!wp_data) 
+			{
+				plr.mo.GiveInventory("I_WaypointStorage", 1);
+				wp_data = I_WaypointStorage(plr.mo.FindInventory("I_WaypointStorage"));
+			}
+			if(wp_data)
+			{
+				wp_data.AddWayPoint(
+					wp_name.getString(),
+				    (0xFF<<24)+wp_color.getInt(),
+					plr.mo.pos.xy 
+				);	
+			}
+			waypointmenu_forceclose = true;
+		}	
+		if(e.Name == "ucm.waypointmenu.delete.byname")
+		{
+			// Add waypoint to player data
+			let wp_data = I_WaypointStorage(plr.mo.FindInventory("I_WaypointStorage"));
+			if(!wp_data) return;
+			wp_data.RemoveNamedWaypoint(wp_name.getString());
+			waypointmenu_forceclose = true;
+		}
+		if(e.Name == "ucm.waypointmenu.delete.closest")
+		{
+			// Add waypoint to player data
+			let wp_data = I_WaypointStorage(plr.mo.FindInventory("I_WaypointStorage"));
+			if(!wp_data) return;
+			wp_data.RemoveCloseWaypoint(plr.mo.pos.xy);
+			waypointmenu_forceclose = true;
+		}
+		
+		// Map controls
+		if(e.Name == "+ucm.zoom.in"  ) mapbtns |=   MBT_ZOOMIN;
+		if(e.Name == "+ucm.zoom.out" ) mapbtns |=   MBT_ZOOMOUT;
+		if(e.Name == "+ucm.pan.up"   ) mapbtns |=   MBT_UP;
+		if(e.Name == "+ucm.pan.down" ) mapbtns |=   MBT_DOWN;
+		if(e.Name == "+ucm.pan.left" ) mapbtns |=   MBT_LEFT;
+		if(e.Name == "+ucm.pan.right") mapbtns |=   MBT_RIGHT;
+		if(e.Name == "-ucm.zoom.in"  ) mapbtns &=  ~MBT_ZOOMIN;
+		if(e.Name == "-ucm.zoom.out" ) mapbtns &=  ~MBT_ZOOMOUT;
+		if(e.Name == "-ucm.pan.up"   ) mapbtns &=  ~MBT_UP;
+		if(e.Name == "-ucm.pan.down" ) mapbtns &=  ~MBT_DOWN;
+		if(e.Name == "-ucm.pan.left" ) mapbtns &=  ~MBT_LEFT;
+		if(e.Name == "-ucm.pan.right") mapbtns &=  ~MBT_RIGHT;
+		
+		// Other buttons
+		if(e.Name == "ucm.switches.apply") FindSwitches();	
+		
+		if(e.Name == "ucm.toggleall") cv_hidden.setBool( !cv_hidden.getBool() );
+		if(e.Name == "ucm.togglemap") cv_drawmap.setBool(!cv_drawmap.getBool());
+		if(e.Name == "ucm.togglefollow") cv_mapfollow.SetBool(!cv_mapfollow.getBool());
+		if(e.Name == "ucm.togglefullscreen") cv_fullmapsize.setBool(!cv_fullmapsize.getBool());
+		if(e.Name == "ucm.togglemaxsize") cv_maxmapsize.setBool(!cv_maxmapsize.getBool());
+	
+		if(e.Name == "align.upperleft")
+		{
+			cv_xoffset.setInt(50);
+			cv_yoffset.setInt(50);
+		}
+		if(e.Name == "align.upperright")
+		{
+			double faroffs = (300*(cv_mapsize.GetInt()/128.));
+			cv_xoffset.setInt(Screen.GetWidth()-faroffs);
+			cv_yoffset.setInt(50);
+		}
+		if(e.Name == "align.lowerleft")
+		{
+			double faroffs = (300*(cv_mapsize.GetInt()/128.));
+			cv_xoffset.setInt(50);
+			cv_yoffset.setInt(Screen.GetHeight()-faroffs);
+		}
+		if(e.Name == "align.lowerright")
+		{
+			double faroffs = (300*(cv_mapsize.GetInt()/128.));
+			cv_xoffset.setInt(Screen.GetWidth()-faroffs);
+			cv_yoffset.setInt(Screen.GetHeight()-faroffs);
+		}
+	}
+	
+	// Math Util
+	clearscope float VDist2D(Vector2 one, Vector2 two)
+	{
+		return (one-two).Length();
+	}	
+	clearscope double Lerp(double a, double b, double lerpFactor)
+	{
+		double result = ((1.f - lerpFactor) * a) + (lerpFactor * b);
+		return result;
+	}
+	clearscope vector2 SwapVector(vector2 vec)
+	{
+		double oldx = vec.x;
+		vec.x = vec.y;
+		vec.y = oldx;
+		return vec;
+	}
+	clearscope vector2, double clamp_vec(vector2 dest, vector2 origin, double dist)
+	{
+		double fulldist = VDist2D(dest, origin);
+		if(fulldist > dist) 
+		{
+			double vecangle = atan2(origin.y-dest.y, origin.x-dest.x);
+			return ( (origin.x-cos(vecangle)*dist), (origin.y-sin(vecangle)*dist) ), fulldist;
+		}
+		return dest, fulldist;
+	}
+	// Draw Util
+	ui void plotPixel (int x0, int y0, Color col = Color(0,0,0), vector2 scale = (0.5,0.5), double alpha = 1.0)
+	{
+		if(pix)
+		{
+			vector2 texsize;
+			[texsize.x, texsize.y] = TexMan.GetSize(curpix);
+			Screen.DrawTexture(curpix,true,x0,y0,
+				DTA_DestWidth, int(texsize.x*scale.x),
+				DTA_DestHeight, int(texsize.y*scale.y),
+				DTA_ColorOverlay, col,
+				DTA_Alpha, alpha
+			);
+		}
+	}
+	ui void drawLine( double x0, double y0, double x1, double y1, Color col, vector2 origin = (0,0), double maxdist = 128, double alpha = 1.0)
+	{	
+		if( (x0 < 0    && x1 < 0)    || 
+		    (y0 < 0    && y1 < 0)    || 
+		    (x0 > scrw && x1 > scrw) || 
+			(y0 > scrh && y1 > scrh)    ) return;
+			
+		if(maxdist < scrw)
+		{
+			double fromdist = VDist2D((x0,y0), origin);
+			double todist = VDist2D((x1,y1), origin);
+			if( (fromdist > maxdist || todist > maxdist) ) 
+			{
+				if(fromdist > maxdist*1.2 && todist > maxdist*1.2) return;
+				double lineangle = atan2(y1-y0, x1-x0);
+				double dist = VDist2D((x0,y0),(x1,y1));
+				double step = 1;
+				for(int i = 0; i < dist; i+=step)
+				{
+					vector2 pixpos = (x0+cos(lineangle)*i, y0+sin(lineangle)*i);
+					double fulldist = VDist2D(pixpos, origin);
+					if(fulldist > maxdist) continue;
+					plotPixel(pixpos.x,pixpos.y, col, (0.5,0.5), alpha);
+				}
+				return;
+			}
+		}
+		Screen.DrawThickLine(x0,y0,x1,y1,2,col,alpha*255);
+	}
+	ui void drawCircle(double x0, double y0, double radius=500, Color col=Color(0,0,0), double alpha = 1.0)
+	{
+		double step = 1.0 / (radius/100);
+		for(double i = 0; i < 360; i+=step)
+		{
+			double xpos = x0+(cos(i)*radius);
+			double ypos = y0+(sin(i)*radius);
+			plotPixel(xpos,ypos,col, alpha:alpha);
+		}
+	}
+	ui void FillCircle(double x0, double y0, double radius, Color col=Color(0xFF,0,0,0), double alpha=1.0, double points=60)
+	{
+		int angfrac = ceil(360/points);
+		if(!bg_circle)
+		{
+			Shape2D circle = new("Shape2D");
+			circle.PushCoord((0,0)); // Middle
+			for(double i = 0; i <= points; i++) circle.PushCoord((cos(angfrac*i),sin(angfrac*i)));
+			for(double i = 1; i <= points; i++) circle.PushTriangle(i,i+1,0);
+			bg_circle = circle;
+		}
+		bg_circle.Clear(Shape2D.C_Verts);
+		bg_circle.PushVertex((x0,y0)); // Middle
+		for(double i = 0; i <= points; i++) bg_circle.PushVertex((x0+cos(angfrac*i)*radius,y0+sin(angfrac*i)*radius));
+		Screen.DrawShape(TexMan.CheckForTexture("BLANK", TexMan.Type_Any), false, bg_circle, DTA_ColorOverlay, col, DTA_Alpha, alpha);
+	}	
+}
+
+/*
+		// Stuff that doesn't work but, may in the future.
+		switch(ln.locknumber)
+		{
+			// Red
+			case 1:
+			case 4:
+			case 129:
+			case 132:
+				drawcol = 0xFFFF0000;
+			break;
+			// Yellow
+			case 2:
+			case 6:
+			case 131:
+			case 134:
+				drawcol = 0xFFFFFF00;
+			break;
+			// Blue
+			case 2:
+			case 5:
+			case 130:
+			case 133:
+				drawcol = 0xFF0000FF;
+			break;
+			default:
+				drawcol = (
+					(ln.flags & Line.ML_BLOCKING) ? solid_linecol : 
+					actionable ? acton_linecol : linecol
+				);
+			break;
+		}
+		int SWITCH_ACTIONS[110] = 
+		{
+			29,103,112,111,50,113,175,61,115,114,63,116,42,196,133,135,137,136,
+			134,99,159,18,131,23,101,221,55,241,71,161,160,102,140,158,189,78,
+			45,65,222,64,177,60,69,132,179,180,70,178,176,190166,167,203,204,
+			187,43,186,205,206,14,15,20,162,163,21,122,181,68,66,67,62,182,123,
+			211,49,164,165,168,183,184,185,188,7,127,258,259,229,233,237,234,230,
+			238,170,171,169,173,172,192,139,138,194,193,11,51,174,209,195,210,9,
+			191
+		};
+*/

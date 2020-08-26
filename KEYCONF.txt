@@ -1,0 +1,33 @@
+alias +UCM_ZOOMIN "netevent \"+ucm.zoom.in\""
+alias +UCM_ZOOMOUT "netevent \"+ucm.zoom.out\""
+alias +UCM_PANUP "netevent \"+ucm.pan.up\""
+alias +UCM_PANDOWN "netevent \"+ucm.pan.down\""
+alias +UCM_PANLEFT "netevent \"+ucm.pan.left\""
+alias +UCM_PANRIGHT "netevent \"+ucm.pan.right\""
+alias -UCM_ZOOMIN "netevent \"-ucm.zoom.in\""
+alias -UCM_ZOOMOUT "netevent \"-ucm.zoom.out\""
+alias -UCM_PANUP "netevent \"-ucm.pan.up\""
+alias -UCM_PANDOWN "netevent \"-ucm.pan.down\""
+alias -UCM_PANLEFT "netevent \"-ucm.pan.left\""
+alias -UCM_PANRIGHT "netevent \"-ucm.pan.right\""
+alias UCM_TOGGLEALL  "netevent \"ucm.toggleall\""
+alias UCM_WAYPOINTS "netevent \"ucm.waypointmenu.open\""
+alias UCM_TOGGLEMAP "netevent \"ucm.togglemap\""
+alias UCM_TOGGLEFULLSCREEN "netevent \"ucm.togglefullscreen\""
+alias UCM_TOGGLEFULLSIZE "netevent \"ucm.togglemaxsize\""
+alias UCM_TOGGLEFOLLOW "netevent \"ucm.togglefollow\""
+
+
+addkeysection "Minimap Controls" UCMControls
+addmenukey "Toggle" UCM_TOGGLEALL
+addmenukey "Zoom In" +UCM_ZOOMIN
+addmenukey "Zoom Out" +UCM_ZOOMOUT
+addmenukey "Waypoints" UCM_WAYPOINTS
+addmenukey "Toggle Map" UCM_TOGGLEMAP
+addmenukey "Toggle Fullscreen" UCM_TOGGLEFULLSCREEN
+addmenukey "Toggle Fullsize" UCM_TOGGLEFULLSIZE
+addmenukey "Toggle Following" UCM_TOGGLEFOLLOW
+addmenukey "Pan Up" +UCM_PANUP
+addmenukey "Pan Down" +UCM_PANDOWN
+addmenukey "Pan Left" +UCM_PANLEFT
+addmenukey "Pan Right" +UCM_PANRIGHT

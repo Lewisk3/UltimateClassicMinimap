@@ -1,0 +1,33 @@
+user bool  ucm_showrepeatable = true;
+user bool  ucm_showdistance = true;
+user bool  ucm_hide = false;
+user bool  ucm_mustuse = true;
+user bool  ucm_drawmap = true;
+user bool  ucm_drawplayer = true;
+user bool  ucm_drawrotation = true;
+user bool  ucm_mapfollow = true;
+user int   ucm_maprenderdist = 8192;
+user int   ucm_specific = 0;
+user int   ucm_maxswitchdist = 30;
+user int   ucm_xoffset = -1;
+user int   ucm_yoffset = -1;
+user float ucm_radarzoom = 3;
+user float ucm_radardist = 256;
+user float ucm_mapsize = 170;
+
+// Map colors
+user color ucm_color_normal = "B47446";
+user color ucm_color_solid  = "D90000";
+user color ucm_color_action = "CDCE00";
+user color ucm_color_border = "760000";
+user color ucm_color_backg  = "000000";
+user float ucm_color_lum    = 1.0;
+user float ucm_color_alpha  = 1.0;
+user float ucm_color_backgalpha = 1.0;
+
+// Temporary
+noarchive user bool ucm_mapshowall = false;
+noarchive user bool ucm_drawmaxsize = false;
+noarchive user bool ucm_drawfullscreen = false;
+noarchive user string waypoint_name = "Waypoint";
+noarchive user color waypoint_color = "00FF00";
