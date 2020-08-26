@@ -1,0 +1,100 @@
+extend class UCMinimap_EventHandler 
+{
+	// Math Util
+	clearscope float VDist2D(Vector2 one, Vector2 two)
+	{
+		return (one-two).Length();
+	}	
+	clearscope double Lerp(double a, double b, double lerpFactor)
+	{
+		double result = ((1.f - lerpFactor) * a) + (lerpFactor * b);
+		return result;
+	}
+	clearscope vector2 SwapVector(vector2 vec)
+	{
+		double oldx = vec.x;
+		vec.x = vec.y;
+		vec.y = oldx;
+		return vec;
+	}
+	clearscope vector2, double clamp_vec(vector2 dest, vector2 origin, double dist)
+	{
+		double fulldist = VDist2D(dest, origin);
+		if(fulldist > dist) 
+		{
+			double vecangle = atan2(origin.y-dest.y, origin.x-dest.x);
+			return ( (origin.x-cos(vecangle)*dist), (origin.y-sin(vecangle)*dist) ), fulldist;
+		}
+		return dest, fulldist;
+	}
+	// Draw Util
+	ui void plotPixel (int x0, int y0, Color col = Color(0,0,0), vector2 scale = (0.5,0.5), double alpha = 1.0)
+	{
+		if(pix)
+		{
+			vector2 texsize;
+			[texsize.x, texsize.y] = TexMan.GetSize(curpix);
+			Screen.DrawTexture(curpix,true,x0,y0,
+				DTA_DestWidth, int(texsize.x*scale.x),
+				DTA_DestHeight, int(texsize.y*scale.y),
+				DTA_ColorOverlay, col,
+				DTA_Alpha, alpha
+			);
+		}
+	}
+	ui void drawLine( double x0, double y0, double x1, double y1, Color col, vector2 origin = (0,0), double maxdist = 128, double alpha = 1.0)
+	{	
+		if( (x0 < 0    && x1 < 0)    || 
+		    (y0 < 0    && y1 < 0)    || 
+		    (x0 > scrw && x1 > scrw) || 
+			(y0 > scrh && y1 > scrh)    ) return;
+			
+		if(maxdist < scrw)
+		{
+			double fromdist = VDist2D((x0,y0), origin);
+			double todist = VDist2D((x1,y1), origin);
+			if( (fromdist > maxdist || todist > maxdist) ) 
+			{
+				if(fromdist > maxdist*1.2 && todist > maxdist*1.2) return;
+				double lineangle = atan2(y1-y0, x1-x0);
+				double dist = VDist2D((x0,y0),(x1,y1));
+				double step = 1;
+				for(int i = 0; i < dist; i+=step)
+				{
+					vector2 pixpos = (x0+cos(lineangle)*i, y0+sin(lineangle)*i);
+					double fulldist = VDist2D(pixpos, origin);
+					if(fulldist > maxdist) continue;
+					plotPixel(pixpos.x,pixpos.y, col, (0.5,0.5), alpha);
+				}
+				return;
+			}
+		}
+		Screen.DrawThickLine(x0,y0,x1,y1,2,col,alpha*255);
+	}
+	ui void drawCircle(double x0, double y0, double radius=500, Color col=Color(0,0,0), double alpha = 1.0)
+	{
+		double step = 1.0 / (radius/100);
+		for(double i = 0; i < 360; i+=step)
+		{
+			double xpos = x0+(cos(i)*radius);
+			double ypos = y0+(sin(i)*radius);
+			plotPixel(xpos,ypos,col, alpha:alpha);
+		}
+	}
+	ui void FillCircle(double x0, double y0, double radius, Color col=Color(0xFF,0,0,0), double alpha=1.0, double points=60)
+	{
+		int angfrac = ceil(360/points);
+		if(!bg_circle)
+		{
+			Shape2D circle = new("Shape2D");
+			circle.PushCoord((0,0)); // Middle
+			for(double i = 0; i <= points; i++) circle.PushCoord((cos(angfrac*i),sin(angfrac*i)));
+			for(double i = 1; i <= points; i++) circle.PushTriangle(i,i+1,0);
+			bg_circle = circle;
+		}
+		bg_circle.Clear(Shape2D.C_Verts);
+		bg_circle.PushVertex((x0,y0)); // Middle
+		for(double i = 0; i <= points; i++) bg_circle.PushVertex((x0+cos(angfrac*i)*radius,y0+sin(angfrac*i)*radius));
+		Screen.DrawShape(TexMan.CheckForTexture("BLANK", TexMan.Type_Any), false, bg_circle, DTA_ColorOverlay, col, DTA_Alpha, alpha);
+	}	
+}

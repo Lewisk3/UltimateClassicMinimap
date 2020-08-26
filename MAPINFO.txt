@@ -1,4 +1,4 @@
 GameInfo
 {
-	AddEventHandlers = "ButtonDetectionEVH"
+	AddEventHandlers = "UCMinimap_EventHandler"
 }

@@ -1,0 +1,113 @@
+extend class UCMinimap_EventHandler 
+{
+	override bool InputProcess(InputEvent e)
+	{
+		if(waypointmenu_forceopen)
+		{	
+		   Menu.SetMenu("UCMWaypoints");
+		   self.SendNetworkEvent("ucm.waypointmenu.done");
+		}
+		return false;
+	}
+	
+	// Buttons
+	override void NetworkProcess(ConsoleEvent e)
+	{
+		PlayerInfo plr = players[e.Player];
+		if(!plr) return;
+		
+		// Waypoint triggers
+		if(e.Name == "ucm.waypointmenu.open" ) 
+		{
+			waypointmenu_forceclose = false;
+			waypointmenu_forceopen = true;
+		}
+		if(e.Name == "ucm.waypointmenu.done" ) 
+		{
+			waypointmenu_forceclose = false;
+			waypointmenu_forceopen = false;
+		}
+		if(e.Name == "ucm.waypointmenu.apply")
+		{
+			// Add waypoint to player data
+			let wp_data = I_WaypointStorage(plr.mo.FindInventory("I_WaypointStorage"));
+			if(!wp_data) 
+			{
+				plr.mo.GiveInventory("I_WaypointStorage", 1);
+				wp_data = I_WaypointStorage(plr.mo.FindInventory("I_WaypointStorage"));
+			}
+			if(wp_data)
+			{
+				wp_data.AddWayPoint(
+					wp_name.getString(),
+				    (0xFF<<24)+wp_color.getInt(),
+					plr.mo.pos.xy 
+				);	
+			}
+			waypointmenu_forceclose = true;
+		}	
+		if(e.Name == "ucm.waypointmenu.delete.byname")
+		{
+			// Add waypoint to player data
+			let wp_data = I_WaypointStorage(plr.mo.FindInventory("I_WaypointStorage"));
+			if(!wp_data) return;
+			wp_data.RemoveNamedWaypoint(wp_name.getString());
+			waypointmenu_forceclose = true;
+		}
+		if(e.Name == "ucm.waypointmenu.delete.closest")
+		{
+			// Add waypoint to player data
+			let wp_data = I_WaypointStorage(plr.mo.FindInventory("I_WaypointStorage"));
+			if(!wp_data) return;
+			wp_data.RemoveCloseWaypoint(plr.mo.pos.xy);
+			waypointmenu_forceclose = true;
+		}
+		
+		// Map controls
+		if(e.Name == "+ucm.zoom.in"  ) mapbtns |=   MBT_ZOOMIN;
+		if(e.Name == "+ucm.zoom.out" ) mapbtns |=   MBT_ZOOMOUT;
+		if(e.Name == "+ucm.pan.up"   ) mapbtns |=   MBT_UP;
+		if(e.Name == "+ucm.pan.down" ) mapbtns |=   MBT_DOWN;
+		if(e.Name == "+ucm.pan.left" ) mapbtns |=   MBT_LEFT;
+		if(e.Name == "+ucm.pan.right") mapbtns |=   MBT_RIGHT;
+		if(e.Name == "-ucm.zoom.in"  ) mapbtns &=  ~MBT_ZOOMIN;
+		if(e.Name == "-ucm.zoom.out" ) mapbtns &=  ~MBT_ZOOMOUT;
+		if(e.Name == "-ucm.pan.up"   ) mapbtns &=  ~MBT_UP;
+		if(e.Name == "-ucm.pan.down" ) mapbtns &=  ~MBT_DOWN;
+		if(e.Name == "-ucm.pan.left" ) mapbtns &=  ~MBT_LEFT;
+		if(e.Name == "-ucm.pan.right") mapbtns &=  ~MBT_RIGHT;
+		
+		// Other buttons
+		if(e.Name == "ucm.switches.apply") FindSwitches();	
+		
+		if(e.Name == "ucm.toggleall") cv_hidden.setBool( !cv_hidden.getBool() );
+		if(e.Name == "ucm.togglemap") cv_drawmap.setBool(!cv_drawmap.getBool());
+		if(e.Name == "ucm.togglefollow") cv_mapfollow.SetBool(!cv_mapfollow.getBool());
+		if(e.Name == "ucm.togglefullscreen") cv_fullmapsize.setBool(!cv_fullmapsize.getBool());
+		if(e.Name == "ucm.togglemaxsize") cv_maxmapsize.setBool(!cv_maxmapsize.getBool());
+	
+		if(e.Name == "align.upperleft")
+		{
+			cv_xoffset.setInt(50);
+			cv_yoffset.setInt(50);
+		}
+		if(e.Name == "align.upperright")
+		{
+			double faroffs = (300*(cv_mapsize.GetInt()/128.));
+			cv_xoffset.setInt(Screen.GetWidth()-faroffs);
+			cv_yoffset.setInt(50);
+		}
+		if(e.Name == "align.lowerleft")
+		{
+			double faroffs = (300*(cv_mapsize.GetInt()/128.));
+			cv_xoffset.setInt(50);
+			cv_yoffset.setInt(Screen.GetHeight()-faroffs);
+		}
+		if(e.Name == "align.lowerright")
+		{
+			double faroffs = (300*(cv_mapsize.GetInt()/128.));
+			cv_xoffset.setInt(Screen.GetWidth()-faroffs);
+			cv_yoffset.setInt(Screen.GetHeight()-faroffs);
+		}
+	}
+}

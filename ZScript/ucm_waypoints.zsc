@@ -1,0 +1,58 @@
+// Waypoints
+class WaypointObject : Object
+{
+	String nickname;
+	Color col;
+	vector2 pos;
+	
+	static WaypointObject Init(String nickname, Color col, vector2 pos)
+	{
+		let wp = new("WaypointObject");
+		if(wp) 
+		{
+			wp.nickname = nickname;
+			wp.col = col;
+			wp.pos = pos;
+		}
+		return wp;
+	}
+}
+class I_WaypointStorage : Inventory
+{
+	Array<WaypointObject> waypoints;
+	Default
+	{
+		inventory.maxamount 1;
+		+INVENTORY.UNDROPPABLE
+		+INVENTORY.UNTOSSABLE
+	}
+	
+	void AddWaypoint(String nickname, Color col, vector2 pos)
+	{
+		let wp = WaypointObject.Init(nickname,col,pos);
+		if(wp) waypoints.Push(wp);
+	}
+	
+	void RemoveNamedWaypoint(String nickname)
+	{
+		for(int i = 0; i < waypoints.Size(); i++)
+		{	
+			if(nickname == waypoints[i].nickname) 
+			{
+				waypoints.Delete(i);
+				break;
+			}
+		}
+	}
+	void RemoveCloseWaypoint(vector2 pos)
+	{
+		for(int i = 0; i < waypoints.Size(); i++)
+		{	
+			if( (waypoints[i].pos - pos).Length() < 5 ) 
+			{
+				waypoints.Delete(i);
+				break;
+			}
+		}
+	}
+}
