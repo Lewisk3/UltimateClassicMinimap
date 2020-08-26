@@ -4,7 +4,7 @@ class UCMinimap_EventHandler : EventHandler
 {
 	bool waypointmenu_forceopen;  // Triggers waypoint menu
 	bool waypointmenu_forceclose; 
-	ui Shape2D bg_circle;
+	ui transient Shape2D bg_circle;
 	ui vector2 baseoffs;
 	ui TextureID curpix; 
 	ui TextureID pix;
@@ -20,33 +20,33 @@ class UCMinimap_EventHandler : EventHandler
 	Array<int> btn_lines;	
 	
 	// CVars
-	CVar cv_xoffset;
-	CVar cv_yoffset;
-	CVar cv_mapfollow;
-	CVar cv_mapshowall;
-	CVar cv_hidden;
-	CVar cv_drawmap;
-	CVar cv_fullmapsize;
-	CVar cv_maxmapsize;
-	CVar cv_domaprotation;
-	CVar cv_showdist;
-	CVar cv_showrep;
-	CVar cv_mapsize;
-	CVar cv_radarzoom;
-	CVar cv_drawplayer;
-	CVar cv_renderdistance;
-	CVar cv_radardistance;
-	CVar cv_switchdistance;
-	CVar cv_color_normal; 
-	CVar cv_color_solid; 
-	CVar cv_color_action; 
-	CVar cv_color_border; 
-	CVar cv_color_backg; 
-	CVar cv_color_lum;
-	CVar cv_color_alpha;
-	CVar cv_color_backgalpha;
-	CVar wp_name;
-	CVar wp_color;
+	private transient CVar cv_xoffset;
+	private transient CVar cv_yoffset;
+	private transient CVar cv_mapfollow;
+	private transient CVar cv_mapshowall;
+	private transient CVar cv_hidden;
+	private transient CVar cv_drawmap;
+	private transient CVar cv_fullmapsize;
+	private transient CVar cv_maxmapsize;
+	private transient CVar cv_domaprotation;
+	private transient CVar cv_showdist;
+	private transient CVar cv_showrep;
+	private transient CVar cv_mapsize;
+	private transient CVar cv_radarzoom;
+	private transient CVar cv_drawplayer;
+	private transient CVar cv_renderdistance;
+	private transient CVar cv_radardistance;
+	private transient CVar cv_switchdistance;
+	private transient CVar cv_color_normal; 
+	private transient CVar cv_color_solid; 
+	private transient CVar cv_color_action; 
+	private transient CVar cv_color_border; 
+	private transient CVar cv_color_backg; 
+	private transient CVar cv_color_lum;
+	private transient CVar cv_color_alpha;
+	private transient CVar cv_color_backgalpha;
+	private transient CVar wp_name;
+	private transient CVar wp_color;
 	
 	// Held button states
 	enum MBT
@@ -265,7 +265,7 @@ class UCMinimap_EventHandler : EventHandler
 				curpix = ((ln.flags & Line.ML_REPEAT_SPECIAL) && showrep) ? rswitchtex : switchtex;
 				double swscale = clamp(size_mod, 0.25, 2.0);
 				plotPixel(finalpos.x, finalpos.y, scale:(swscale,swscale));
-				if(showdist) Screen.DrawText("dbigfont",Font.CR_GREEN,finalpos.x-5,finalpos.y-5, string.format("%d",dist));
+				if(showdist) Screen.DrawText("bigfont",Font.CR_GREEN,finalpos.x-5,finalpos.y-5, string.format("%d",dist));
 			}
 		}
 	
@@ -333,7 +333,7 @@ class UCMinimap_EventHandler : EventHandler
 						finalpos = clamp_vec(finalpos, map_middle, MAP_SIZE);
 						curpix = pix;
 						plotPixel(finalpos.x, finalpos.y, wp.col, (wpscale,wpscale));
-						Screen.DrawText("dbigfont",Font.CR_GOLD,finalpos.x-(wpscale/2),finalpos.y-(wpscale/2), wp.nickname);
+						Screen.DrawText("bigfont",Font.CR_GOLD,finalpos.x-(wpscale/2),finalpos.y-(wpscale/2), wp.nickname);
 					}
 				}
 			}

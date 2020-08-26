@@ -57,6 +57,8 @@ OptionMenu "UCMOptions_Colors"
    StaticText " "
    Slider "Map Opacity",	"ucm_color_alpha", 0, 1.0, 0.01, 2
    Slider "Background Opacity",	"ucm_color_backgalpha", 0, 1.0, 0.01, 2
+   StaticText " "
+   Command "Reset Colors", "netevent ucm.resetcolors"
 }
 
 OptionMenu "UCMOptions_Switches"

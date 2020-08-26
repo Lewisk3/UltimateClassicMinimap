@@ -85,6 +85,15 @@ extend class UCMinimap_EventHandler
 		if(e.Name == "ucm.togglefollow") cv_mapfollow.SetBool(!cv_mapfollow.getBool());
 		if(e.Name == "ucm.togglefullscreen") cv_fullmapsize.setBool(!cv_fullmapsize.getBool());
 		if(e.Name == "ucm.togglemaxsize") cv_maxmapsize.setBool(!cv_maxmapsize.getBool());
+		
+		if(e.Name == "ucm.resetcolors")
+		{
+			cv_color_normal.SetInt(0xB47446); 
+			cv_color_solid.SetInt(0xD90000);
+			cv_color_action.SetInt(0xCDCE00);
+			cv_color_border.SetInt(0x760000);
+			cv_color_backg.SetInt(0x000000);				
+		}
 	
 		if(e.Name == "align.upperleft")
 		{
