@@ -7,7 +7,8 @@ extend class UCMinimap_EventHandler
 	}	
 	clearscope double Lerp(double a, double b, double lerpFactor)
 	{
-		double result = ((1.f - lerpFactor) * a) + (lerpFactor * b);
+		if(lerpFactor < 0 || lerpFactor > 1.) lerpFactor = 1.;
+		double result = ((1. - lerpFactor) * a) + (lerpFactor * b);
 		return result;
 	}
 	clearscope vector2 SwapVector(vector2 vec)

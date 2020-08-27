@@ -116,8 +116,6 @@ class UCMinimap_EventHandler : EventHandler
 			plr_rot = plr.angle;
 			baseoffs = ((25*size_mod)-useroffs.x, (25*size_mod)-useroffs.y);
 			curzoom = cv_radarzoom.GetFloat();
-			prevMS = MSTime();
-			deltatime = 1;
 		}
 		
 		// Colors
