@@ -310,7 +310,9 @@ class UCMinimap_EventHandler : EventHandler
 						finalpos = clamp_vec(finalpos, map_middle, MAP_SIZE);
 						curpix = pix;
 						plotPixel(finalpos.x, finalpos.y, wp.col, (wpscale,wpscale));
-						Screen.DrawText("bigfont",Font.CR_GOLD,finalpos.x-(wpscale/2),finalpos.y-(wpscale/2), wp.nickname);
+						Color textcol = wp.col - (0xC0<<24);
+						Screen.DrawText("bigfont",Font.CR_WHITE,
+							finalpos.x-(wpscale/2),finalpos.y-(wpscale/2), wp.nickname, DTA_ColorOverlay, textcol);
 					}
 				}
 			}
