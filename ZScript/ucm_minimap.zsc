@@ -5,18 +5,18 @@ class UCMinimap_EventHandler : EventHandler
 	bool waypointmenu_forceopen;  // Triggers waypoint menu
 	bool waypointmenu_forceclose; 
 	ui transient Shape2D bg_circle;
-	ui vector2 baseoffs;
+	ui transient vector2 baseoffs;
 	ui TextureID curpix; 
 	ui TextureID pix;
 	ui TextureID indpix;
-	ui double prevMS;
-	ui double deltatime;
-	ui double map_size;
-	ui double scrw;
-	ui double scrh;
-	ui double plr_rot;
-	ui double curzoom;
-	ui vector2 mappos; // Interpolated player position.
+	ui transient double prevMS;
+	ui transient double deltatime;
+	ui transient double map_size;
+	ui transient double scrw;
+	ui transient double scrh;
+	ui transient double plr_rot;
+	ui transient double curzoom;
+	ui transient vector2 mappos; // Interpolated player position.
 	Array<int> btn_lines;	
 	
 	// CVars
@@ -95,7 +95,7 @@ class UCMinimap_EventHandler : EventHandler
 		wp_name  = CVar.GetCVar("waypoint_name",plr);
 		wp_color = CVar.GetCVar("waypoint_color",plr);
 	}
-			
+	
 	override void WorldTick()
 	{
 		if((mapbtns & MBT_ZOOMIN) && cv_radarzoom.GetFloat() > 1) 
@@ -111,6 +111,7 @@ class UCMinimap_EventHandler : EventHandler
 	{
 		let plr = players[consoleplayer].mo;
 		if(!plr) return;	
+		
 		
 		// Setup
 		scrw = Screen.GetWidth();
@@ -152,7 +153,18 @@ class UCMinimap_EventHandler : EventHandler
 		Color backgcol      = alpha_mask + cv_color_backg.getInt(); 
 		double line_alpha   = cv_color_alpha.getFloat();
 		
-		// Size and Offsets
+		// If the map was recently loaded, reset interpolation.
+		if(level.maptime < 5) 
+		{
+			map_size = to_mapsize;
+			size_mod = map_size/128.;
+			mappos = plr.pos.xy;
+			plr_rot = plr.angle;
+			baseoffs = ((25*size_mod)-useroffs.x, (25*size_mod)-useroffs.y);
+			curzoom = cv_radarzoom.GetFloat();
+		}
+
+		// Size and Offsets		
 		curzoom = Lerp(curzoom, cv_radarzoom.GetFloat(), 0.25*deltatime);
 		if(curzoom == 0) curzoom = 1;
 		
@@ -176,7 +188,7 @@ class UCMinimap_EventHandler : EventHandler
 			baseoffs.x = Lerp(baseoffs.x,(25*size_mod)-useroffs.x,0.25*deltatime);
 			baseoffs.y = Lerp(baseoffs.y,(25*size_mod)-useroffs.y,0.25*deltatime);
 		}
-		
+				
 		// Rotation and Positioning
 		if(cv_mapfollow.GetBool())
 		{
@@ -402,8 +414,12 @@ class UCMinimap_EventHandler : EventHandler
 			}
 		}
 	}
-	override void WorldLoaded(WorldEvent  e)
+	override void WorldLoaded(WorldEvent e)
 	{
-		FindSwitches();
+		FindSwitches();		
+		let plr = players[consoleplayer].mo;
+		if(!plr) return;
+		let wp = I_WaypointStorage(plr.FindInventory("I_WaypointStorage"));
+		if(wp) wp.waypoints.Clear();
 	}
 }
