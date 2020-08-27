@@ -1,6 +1,6 @@
 // Minimap and Radar
 
-class UCMinimap_EventHandler : EventHandler 
+class UCMinimap_EventHandler : StaticEventHandler 
 {
 	bool waypointmenu_forceopen;  // Triggers waypoint menu
 	bool waypointmenu_forceclose; 
@@ -60,41 +60,6 @@ class UCMinimap_EventHandler : EventHandler
 	};
 	uint mapbtns;
 	
-	// CVar Registry
-	override void OnRegister()
-	{
-		PlayerInfo plr = players[consoleplayer];
-		if(!plr) return;
-	
-		cv_xoffset    		= CVar.GetCVar("ucm_xoffset", plr);
-		cv_yoffset    		= CVar.GetCVar("ucm_yoffset", plr);
-		cv_mapfollow	 	= CVar.GetCVar("ucm_mapfollow", plr);
-		cv_mapshowall 		= CVar.GetCVar("ucm_mapshowall", plr);
-		cv_hidden			= CVar.GetCVar("ucm_hide", plr);
-		cv_drawmap          = CVar.GetCVar("ucm_drawmap", plr);
-		cv_fullmapsize		= CVar.GetCVar("ucm_drawfullscreen", plr);
-		cv_maxmapsize		= CVar.GetCVar("ucm_drawmaxsize", plr);
-		cv_domaprotation	= CVar.GetCVar("ucm_drawrotation", plr);
-		cv_showdist			= CVar.GetCVar("ucm_showdistance", plr);
-		cv_showrep			= CVar.GetCVar("ucm_showrepeatable", plr);
-		cv_mapsize			= CVar.GetCVar("ucm_mapsize", plr);
-		cv_radarzoom		= CVar.GetCVar("ucm_radarzoom", plr);
-		cv_renderdistance	= CVar.GetCVar("ucm_maprenderdist", plr);
-		cv_drawplayer		= CVar.GetCVar("ucm_drawplayer", plr);
-		cv_radardistance	= CVar.GetCVar("ucm_radardist", plr);
-		cv_switchdistance   = CVar.GetCVar("ucm_maxswitchdist", plr); 
-		cv_color_normal		= CVar.GetCVar("ucm_color_normal", plr); 
-		cv_color_solid		= CVar.GetCVar("ucm_color_solid", plr); 
-		cv_color_action		= CVar.GetCVar("ucm_color_action", plr); 
-		cv_color_border		= CVar.GetCVar("ucm_color_border", plr);
-		cv_color_backg		= CVar.GetCVar("ucm_color_backg", plr);
-		cv_color_lum		= CVar.GetCVar("ucm_color_lum", plr);
-		cv_color_alpha		= CVar.GetCVar("ucm_color_alpha", plr);
-		cv_color_backgalpha	= CVar.GetCVar("ucm_color_backgalpha", plr);
-		
-		wp_name  = CVar.GetCVar("waypoint_name",plr);
-		wp_color = CVar.GetCVar("waypoint_color",plr);
-	}
 	
 	override void WorldTick()
 	{
@@ -104,7 +69,7 @@ class UCMinimap_EventHandler : EventHandler
 			cv_radarzoom.SetFloat(cv_radarzoom.getFloat()+0.1);
 		
 		if(cv_xoffset.GetInt() < 0 && cv_yoffset.GetInt() < 0)
-			self.SendNetworkEvent("align.upperleft");
+			EventHandler.SendNetworkEvent("align.upperleft");
 	}
 		
 	override void RenderOverlay(RenderEvent e)
@@ -388,7 +353,7 @@ class UCMinimap_EventHandler : EventHandler
 		{
 			let m = Menu.getCurrentMenu();
 			if(m) m.Close();
-			self.SendNetworkEvent("ucm.waypointmenu.done");
+			EventHandler.SendNetworkEvent("ucm.waypointmenu.done");
 		}
 	}
 
@@ -416,10 +381,40 @@ class UCMinimap_EventHandler : EventHandler
 	}
 	override void WorldLoaded(WorldEvent e)
 	{
-		FindSwitches();		
-		let plr = players[consoleplayer].mo;
+		PlayerInfo plr = players[consoleplayer];
 		if(!plr) return;
-		let wp = I_WaypointStorage(plr.FindInventory("I_WaypointStorage"));
+	
+		cv_xoffset    		= CVar.GetCVar("ucm_xoffset", plr);
+		cv_yoffset    		= CVar.GetCVar("ucm_yoffset", plr);
+		cv_mapfollow	 	= CVar.GetCVar("ucm_mapfollow", plr);
+		cv_mapshowall 		= CVar.GetCVar("ucm_mapshowall", plr);
+		cv_hidden			= CVar.GetCVar("ucm_hide", plr);
+		cv_drawmap          = CVar.GetCVar("ucm_drawmap", plr);
+		cv_fullmapsize		= CVar.GetCVar("ucm_drawfullscreen", plr);
+		cv_maxmapsize		= CVar.GetCVar("ucm_drawmaxsize", plr);
+		cv_domaprotation	= CVar.GetCVar("ucm_drawrotation", plr);
+		cv_showdist			= CVar.GetCVar("ucm_showdistance", plr);
+		cv_showrep			= CVar.GetCVar("ucm_showrepeatable", plr);
+		cv_mapsize			= CVar.GetCVar("ucm_mapsize", plr);
+		cv_radarzoom		= CVar.GetCVar("ucm_radarzoom", plr);
+		cv_renderdistance	= CVar.GetCVar("ucm_maprenderdist", plr);
+		cv_drawplayer		= CVar.GetCVar("ucm_drawplayer", plr);
+		cv_radardistance	= CVar.GetCVar("ucm_radardist", plr);
+		cv_switchdistance   = CVar.GetCVar("ucm_maxswitchdist", plr); 
+		cv_color_normal		= CVar.GetCVar("ucm_color_normal", plr); 
+		cv_color_solid		= CVar.GetCVar("ucm_color_solid", plr); 
+		cv_color_action		= CVar.GetCVar("ucm_color_action", plr); 
+		cv_color_border		= CVar.GetCVar("ucm_color_border", plr);
+		cv_color_backg		= CVar.GetCVar("ucm_color_backg", plr);
+		cv_color_lum		= CVar.GetCVar("ucm_color_lum", plr);
+		cv_color_alpha		= CVar.GetCVar("ucm_color_alpha", plr);
+		cv_color_backgalpha	= CVar.GetCVar("ucm_color_backgalpha", plr);
+		
+		wp_name  = CVar.GetCVar("waypoint_name",plr);
+		wp_color = CVar.GetCVar("waypoint_color",plr);
+	
+		FindSwitches();		
+		let wp = I_WaypointStorage(plr.mo.FindInventory("I_WaypointStorage"));
 		if(wp) wp.waypoints.Clear();
 	}
 }
