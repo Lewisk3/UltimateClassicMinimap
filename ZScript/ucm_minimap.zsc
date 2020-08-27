@@ -76,15 +76,14 @@ class UCMinimap_EventHandler : EventHandler
 	{
 		let plr = players[consoleplayer].mo;
 		if(!plr) return;	
-		
-		
+				
 		// Setup
 		scrw = Screen.GetWidth();
 		scrh = Screen.GetHeight();
 		if(mappos.x+mappos.y == 0) mappos = plr.pos.xy; 
 		
 		// Face animations
-		int faceind = ((Level.time / 35) % 3);
+		int faceind = (((Level.time+1) / 35) % 3);
 		if(faceind > 2) faceind = 0;
 		
 		// Textures
@@ -108,6 +107,19 @@ class UCMinimap_EventHandler : EventHandler
 		double size_mod   		  = fullmapsize ? scrw/128. : map_size/128.;
 		double minimap_renderdist = cv_renderdistance.getInt();
 		
+		// If the map was recently loaded, reset interpolation.
+		if(level.maptime < 5) 
+		{
+			map_size = to_mapsize;
+			mappos = plr.pos.xy;
+			size_mod = map_size/128.;
+			plr_rot = plr.angle;
+			baseoffs = ((25*size_mod)-useroffs.x, (25*size_mod)-useroffs.y);
+			curzoom = cv_radarzoom.GetFloat();
+			prevMS = MSTime();
+			deltatime = 1;
+		}
+		
 		// Colors
 		int col_bright      = int(255.*cv_color_lum.getFloat()) << 24;
 		int alpha_mask      = 0xFF << 24;
@@ -118,16 +130,6 @@ class UCMinimap_EventHandler : EventHandler
 		Color backgcol      = alpha_mask + cv_color_backg.getInt(); 
 		double line_alpha   = cv_color_alpha.getFloat();
 		
-		// If the map was recently loaded, reset interpolation.
-		if(level.maptime < 5) 
-		{
-			map_size = to_mapsize;
-			size_mod = map_size/128.;
-			mappos = plr.pos.xy;
-			plr_rot = plr.angle;
-			baseoffs = ((25*size_mod)-useroffs.x, (25*size_mod)-useroffs.y);
-			curzoom = cv_radarzoom.GetFloat();
-		}
 
 		// Size and Offsets		
 		curzoom = Lerp(curzoom, cv_radarzoom.GetFloat(), 0.25*deltatime);
