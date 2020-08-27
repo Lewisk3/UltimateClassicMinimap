@@ -98,4 +98,27 @@ extend class UCMinimap_EventHandler
 		for(double i = 0; i <= points; i++) bg_circle.PushVertex((x0+cos(angfrac*i)*radius,y0+sin(angfrac*i)*radius));
 		Screen.DrawShape(TexMan.CheckForTexture("BLANK", TexMan.Type_Any), false, bg_circle, DTA_ColorOverlay, col, DTA_Alpha, alpha);
 	}	
+	ui void DrawScaledString( Font fnt, String str, Vector2 pos, Color tint = Color(0,0,0,0), 
+						Vector2 scale = (1, 1), double Alpha = 1., 
+						int translation = Font.CR_UNTRANSLATED, int linespacing = 20 )
+	{
+		Array<String> lines;
+		str.Split(lines, "\n");
+		
+		pos.x *= 1./(scale.x*0.5);
+		pos.y *= 1./(scale.y*0.5);
+		
+		for(int i = 0; i < lines.Size(); i++)
+		{
+			 float lineoffs = (linespacing*i);
+			 Screen.DrawText(fnt, translation, pos.x, pos.y+lineoffs, 
+				lines[i],
+				DTA_VirtualWidthF,  int(320.*(1./scale.x*0.5)),
+				DTA_VirtualHeightF, int(200.*(1./scale.y*0.5)),
+				DTA_KeepRatio, true,
+				DTA_Alpha, alpha,
+				DTA_ColorOverlay, tint
+			);
+		}		
+	}
 }

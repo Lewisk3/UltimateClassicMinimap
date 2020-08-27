@@ -14,10 +14,13 @@ OptionMenu "UCMOptions"
    StaticText " "
    StaticText "General", "Gold"
    Option "Enabled", "ucm_hide", "NoOrYes"
+   Option "Draw Compass", "ucm_drawcompass", "YesOrNo"
    Option "Draw Player", "ucm_drawplayer", "YesOrNo"
-   SubMenu "Map Align ->", "UCMOptions_Alignment"
+   StaticText " "
    Slider "X Position",	"ucm_xoffset", -30, 9999, 1, 0
    Slider "X Position",	"ucm_yoffset", -30, 9999, 1, 0
+   SubMenu "Map Alignment", "UCMOptions_Alignment"
+   StaticText " "
    Slider "Size", "ucm_mapsize", 32, 512, 1, 0
    Option "Fullscreen",	"ucm_drawfullscreen", "YesOrNo"
    StaticText " "
@@ -54,6 +57,7 @@ OptionMenu "UCMOptions_Colors"
    ColorPicker "Actionable Line", "ucm_color_action"
    ColorPicker "Map Border", "ucm_color_border"
    ColorPicker "Background", "ucm_color_backg"
+   ColorPicker "Compass", "ucm_color_compas"
    StaticText " "
    Slider "Map Opacity",	"ucm_color_alpha", 0, 1.0, 0.01, 2
    Slider "Background Opacity",	"ucm_color_backgalpha", 0, 1.0, 0.01, 2

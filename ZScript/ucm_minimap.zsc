@@ -34,6 +34,7 @@ class UCMinimap_EventHandler : EventHandler
 	private transient CVar cv_mapsize;
 	private transient CVar cv_radarzoom;
 	private transient CVar cv_drawplayer;
+	private transient CVar cv_drawcompass;
 	private transient CVar cv_renderdistance;
 	private transient CVar cv_radardistance;
 	private transient CVar cv_switchdistance;
@@ -45,6 +46,7 @@ class UCMinimap_EventHandler : EventHandler
 	private transient CVar cv_color_lum;
 	private transient CVar cv_color_alpha;
 	private transient CVar cv_color_backgalpha;
+	private transient CVar cv_color_compass;
 	private transient CVar wp_name;
 	private transient CVar wp_color;
 	
@@ -71,6 +73,7 @@ class UCMinimap_EventHandler : EventHandler
 		cv_mapshowall 		= CVar.GetCVar("ucm_mapshowall", plr);
 		cv_hidden			= CVar.GetCVar("ucm_hide", plr);
 		cv_drawmap          = CVar.GetCVar("ucm_drawmap", plr);
+		cv_drawcompass      = CVar.GetCVar("ucm_drawcompass", plr);
 		cv_fullmapsize		= CVar.GetCVar("ucm_drawfullscreen", plr);
 		cv_maxmapsize		= CVar.GetCVar("ucm_drawmaxsize", plr);
 		cv_domaprotation	= CVar.GetCVar("ucm_drawrotation", plr);
@@ -87,9 +90,11 @@ class UCMinimap_EventHandler : EventHandler
 		cv_color_action		= CVar.GetCVar("ucm_color_action", plr); 
 		cv_color_border		= CVar.GetCVar("ucm_color_border", plr);
 		cv_color_backg		= CVar.GetCVar("ucm_color_backg", plr);
+		cv_color_compass    = CVar.GetCVar("ucm_color_compas", plr);
 		cv_color_lum		= CVar.GetCVar("ucm_color_lum", plr);
 		cv_color_alpha		= CVar.GetCVar("ucm_color_alpha", plr);
 		cv_color_backgalpha	= CVar.GetCVar("ucm_color_backgalpha", plr);
+		
 		
 		wp_name  = CVar.GetCVar("waypoint_name", plr);
 		wp_color = CVar.GetCVar("waypoint_color", plr);
@@ -137,7 +142,7 @@ class UCMinimap_EventHandler : EventHandler
 		bool domaprotation  = cv_domaprotation.GetBool(); 
 		bool showdist 		= cv_showdist.GetBool(); 
 		bool showrep  		= cv_showrep.GetBool();
-		double to_mapsize 		  = fullmapsize ? scrw : (!maxmapsize ? cv_mapsize.getFloat() : 512);
+		double to_mapsize 		  = fullmapsize ? scrw*2 : (!maxmapsize ? cv_mapsize.getFloat() : 512);
 		double size_mod   		  = fullmapsize ? scrw/128. : map_size/128.;
 		double minimap_renderdist = cv_renderdistance.getInt();
 		
@@ -171,13 +176,12 @@ class UCMinimap_EventHandler : EventHandler
 			map_size = Lerp(map_size, to_mapsize*(scrw/1920.), 0.25*deltatime);
 		else 
 			map_size = Lerp(map_size, 0, 0.25*deltatime);
-			
-		if(fullmapsize) 
-			baseoffs = (scrw/2. + (map_size/2.), scrh/2. + (map_size/2.)) - ((35,0) * size_mod);
-		else if(maxmapsize) 
+		
+		float xres = 1920./scrw;
+		float yres = 1080./scrh;
+
+		if(!fullmapsize && maxmapsize) 
 		{
-			float xres = scrw/1920.;
-			float yres = scrh/1080.;
 			double scrside = useroffs.x > scrw/2. ? -600 : -100;
 			baseoffs.x = Lerp(baseoffs.x,scrside*xres,0.25*deltatime);
 			baseoffs.y = Lerp(baseoffs.y,35*yres,0.25*deltatime);
@@ -206,6 +210,11 @@ class UCMinimap_EventHandler : EventHandler
 		}
 		Vector2 dp = Actor.RotateVector( (0,0), plr_rot-90 );
 		Vector2 map_middle = (dp.x-baseoffs.x+(156*size_mod),dp.y-baseoffs.y+(140*size_mod));
+		if(fullmapsize)
+		{
+			map_middle = (scrw/2., scrh/2.);
+			baseoffs = map_middle;
+		}
 		
 		// Draw Minimap BG
 		if(!hidden) 
@@ -232,7 +241,7 @@ class UCMinimap_EventHandler : EventHandler
 					continue;
 				}
 					
-				Vector2 amapoffs = -baseoffs+((156, 140)*size_mod);
+				Vector2 amapoffs = fullmapsize ? baseoffs : -baseoffs+((156, 140)*size_mod);
 				ln_pos = Actor.RotateVector(SwapVector(ln_pos-mappos),plr_rot+180);
 				ln_len = Actor.RotateVector(SwapVector(ln_len-mappos),plr_rot+180);					
 				ln_pos += amapoffs*curzoom;
@@ -270,7 +279,6 @@ class UCMinimap_EventHandler : EventHandler
 				Vector2 dp = Actor.RotateVector( SwapVector((x,y)), plr_rot );
 				dp /= curzoom;
 				
-				vector2 fullbaseoffs = baseoffs/size_mod;
 				vector2 finalpos = dp+map_middle;
 				finalpos = clamp_vec(finalpos, map_middle, MAP_SIZE-4);
 				curpix = ((ln.flags & Line.ML_REPEAT_SPECIAL) && showrep) ? rswitchtex : switchtex;
@@ -283,6 +291,7 @@ class UCMinimap_EventHandler : EventHandler
 		// Draw Radar
 		if(!hidden) 
 		{			
+			double frontangle = plr_rot+180;
 			double maxdist = cv_radardistance.getFloat();
 			ThinkerIterator act_it = ThinkerIterator.Create("Actor");
 			Actor obj;		
@@ -296,7 +305,6 @@ class UCMinimap_EventHandler : EventHandler
 				int dis = obj.Distance2D(plr);
 				if( dis < (maxdist*10.) )
 				{
-					double frontangle = plr_rot+180;
 					vector2 delta = Actor.RotateVector( SwapVector((x,y)), frontangle);
 					delta.x /= curzoom;
 					delta.y /= curzoom;
@@ -325,32 +333,25 @@ class UCMinimap_EventHandler : EventHandler
 			}
 			
 			// Draw Waypoints
-			if(!hidden)
+			let wp_data = I_WaypointStorage(plr.FindInventory("I_WaypointStorage"));
+			if(wp_data)
 			{
-				let wp_data = I_WaypointStorage(plr.FindInventory("I_WaypointStorage"));
-				if(wp_data)
+				for(int i = 0; i < wp_data.waypoints.Size(); i++)
 				{
-					for(int i = 0; i < wp_data.waypoints.Size(); i++)
-					{
-						let wp = WaypointObject(wp_data.waypoints[i]);
-						double x = mappos.x - wp.pos.x;
-						double y = mappos.y - wp.pos.y;
-						double frontangle = plr_rot+180;
-						vector2 delta = Actor.RotateVector( SwapVector((x,y)), frontangle);
-						delta.x /= curzoom;
-						delta.y /= curzoom;	
-						vector2 finalpos = ((map_middle.x-delta.x), (map_middle.y-delta.y));
-						double wpscale = 4.0 * (scrw/1920.);
-						finalpos = clamp_vec(finalpos, map_middle, MAP_SIZE);
-						curpix = pix;
-						plotPixel(finalpos.x, finalpos.y, wp.col, (wpscale,wpscale));
-						Color textcol = wp.col - (0xC0<<24);
-						Screen.DrawText("bigfont",Font.CR_WHITE,
-							finalpos.x-(wpscale/2),finalpos.y-(wpscale/2), wp.nickname, DTA_ColorOverlay, textcol);
-					}
+					let wp = WaypointObject(wp_data.waypoints[i]);
+					double x = mappos.x - wp.pos.x;
+					double y = mappos.y - wp.pos.y;
+					vector2 delta    = Actor.RotateVector( SwapVector((x,y)), frontangle) / curzoom;
+					vector2 finalpos = map_middle-delta;
+					double wpscale = 4.0;
+					finalpos = clamp_vec(finalpos, map_middle, MAP_SIZE);
+					curpix = pix;
+					plotPixel(finalpos.x, finalpos.y, wp.col, (wpscale,wpscale));
+					Color textcol = wp.col - (0x90<<24);
+					Screen.DrawText("bigfont", Font.CR_UNTRANSLATED,
+						finalpos.x-(wpscale/2),finalpos.y-(wpscale/2), wp.nickname, DTA_ColorOverlay, textcol);
 				}
 			}
-		 
 			// Draw Player
 			if(cv_drawplayer.GetBool())
 			{
@@ -362,7 +363,6 @@ class UCMinimap_EventHandler : EventHandler
 				{
 					double x = mappos.x - plr.pos.x;
 					double y = mappos.y - plr.pos.y;
-					double frontangle = plr_rot+180;
 					vector2 delta = Actor.RotateVector( SwapVector((x,y)), frontangle);
 					delta.x /= curzoom;
 					delta.y /= curzoom;		
@@ -371,6 +371,26 @@ class UCMinimap_EventHandler : EventHandler
 						plotPixel(finalpos.x-(16*plrscale),finalpos.y-(16*plrscale), scale:(plrscale,plrscale));
 				}
 			}
+			// Draw Compass
+			if(cv_drawcompass.GetBool())
+			{
+				curpix = pix;
+				Color compasscol = (0x90 << 24) + cv_color_compass.GetInt();
+				double cradius = fullmapsize ? 128/xres : map_size;
+				vector2 truemid = fullmapsize ? (200/xres,200/yres) : map_middle;
+				vector2 midoffs = -(6,5);
+				vector2 northpos = truemid+midoffs+(Actor.RotateVector((cradius,cradius)*0.78, frontangle-45    ));
+				vector2 southpos = truemid+midoffs+(Actor.RotateVector((cradius,cradius)*0.78, frontangle-45+180));
+				vector2 eastpos  = truemid+midoffs+(Actor.RotateVector((cradius,cradius)*0.78, frontangle-45+90 ));
+				vector2 westpos  = truemid+midoffs+(Actor.RotateVector((cradius,cradius)*0.78, frontangle-45-90 ));
+				uint ftrns = Font.CR_UNTRANSLATED;
+				DrawCircle(truemid.x, truemid.y, cradius*1.1, int(compasscol*0.5), 0.5);
+				Screen.DrawText("bigfont", ftrns, northpos.x, northpos.y, "N", DTA_ColorOverlay, compasscol);
+				Screen.DrawText("bigfont", ftrns, southpos.x, southpos.y, "S", DTA_ColorOverlay, compasscol);
+				Screen.DrawText("bigfont", ftrns,  eastpos.x,  eastpos.y, "E", DTA_ColorOverlay, compasscol);
+				Screen.DrawText("bigfont", ftrns,  westpos.x,  westpos.y, "W", DTA_ColorOverlay, compasscol);
+			}
+			
 		}
 		
 		// Delatime
