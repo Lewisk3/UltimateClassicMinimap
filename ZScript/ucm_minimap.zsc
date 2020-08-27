@@ -1,14 +1,14 @@
 // Minimap and Radar
 
-class UCMinimap_EventHandler : StaticEventHandler 
+class UCMinimap_EventHandler : EventHandler 
 {
-	bool waypointmenu_forceopen;  // Triggers waypoint menu
-	bool waypointmenu_forceclose; 
+	transient bool waypointmenu_forceopen;  // Triggers waypoint menu
+	transient bool waypointmenu_forceclose; 
 	ui transient Shape2D bg_circle;
 	ui transient vector2 baseoffs;
-	ui TextureID curpix; 
-	ui TextureID pix;
-	ui TextureID indpix;
+	ui transient TextureID curpix; 
+	ui transient TextureID pix;
+	ui transient TextureID indpix;
 	ui transient double prevMS;
 	ui transient double deltatime;
 	ui transient double map_size;
@@ -17,7 +17,7 @@ class UCMinimap_EventHandler : StaticEventHandler
 	ui transient double plr_rot;
 	ui transient double curzoom;
 	ui transient vector2 mappos; // Interpolated player position.
-	Array<int> btn_lines;	
+	transient Array<int> btn_lines;	
 	
 	// CVars
 	private transient CVar cv_xoffset;
@@ -69,7 +69,7 @@ class UCMinimap_EventHandler : StaticEventHandler
 			cv_radarzoom.SetFloat(cv_radarzoom.getFloat()+0.1);
 		
 		if(cv_xoffset.GetInt() < 0 && cv_yoffset.GetInt() < 0)
-			EventHandler.SendNetworkEvent("align.upperleft");
+			SendNetworkEvent("align.upperleft");
 	}
 		
 	override void RenderOverlay(RenderEvent e)
@@ -353,7 +353,7 @@ class UCMinimap_EventHandler : StaticEventHandler
 		{
 			let m = Menu.getCurrentMenu();
 			if(m) m.Close();
-			EventHandler.SendNetworkEvent("ucm.waypointmenu.done");
+			SendNetworkEvent("ucm.waypointmenu.done");
 		}
 	}
 
@@ -410,8 +410,8 @@ class UCMinimap_EventHandler : StaticEventHandler
 		cv_color_alpha		= CVar.GetCVar("ucm_color_alpha", plr);
 		cv_color_backgalpha	= CVar.GetCVar("ucm_color_backgalpha", plr);
 		
-		wp_name  = CVar.GetCVar("waypoint_name",plr);
-		wp_color = CVar.GetCVar("waypoint_color",plr);
+		wp_name  = CVar.GetCVar("waypoint_name", plr);
+		wp_color = CVar.GetCVar("waypoint_color", plr);
 	
 		FindSwitches();		
 		let wp = I_WaypointStorage(plr.mo.FindInventory("I_WaypointStorage"));

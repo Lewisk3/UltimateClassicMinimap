@@ -5,7 +5,7 @@ extend class UCMinimap_EventHandler
 		if(waypointmenu_forceopen)
 		{	
 		   Menu.SetMenu("UCMWaypoints");
-		   EventHandler.SendNetworkEvent("ucm.waypointmenu.done");
+		   SendNetworkEvent("ucm.waypointmenu.done");
 		}
 		return false;
 	}
