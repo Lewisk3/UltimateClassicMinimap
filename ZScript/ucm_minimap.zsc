@@ -453,9 +453,9 @@ class UCMinimap_EventHandler : EventHandler
 				vector2 txtpos = (50/xres,360/yres);
 				vector2 txtdiff = (0,15/yres);
 				uint ftrns = Font.CR_UNTRANSLATED;
-				double killsper = (level.killed_monsters/double(level.total_monsters))*100;
-				double secretsper = (level.found_secrets/double(level.total_secrets))*100;
-				double itemsper = (level.found_items/double(level.total_items))*100;
+				double killsper = level.total_monsters ? level.killed_monsters/double(level.total_monsters)*100 : 100;
+				double secretsper = level.total_secrets ? (level.found_secrets/double(level.total_secrets))*100 : 100;
+				double itemsper = level.total_items ? (level.found_items/double(level.total_items))*100 : 100;
 				double playhours   = cv_playtime.getInt()/(35*60*60);
 				double playminutes = cv_playtime.getInt()/(35*60) - (playhours*60);
 				double playseconds = cv_playtime.getInt()/35. - (playminutes*60) - (playhours*60*60);
