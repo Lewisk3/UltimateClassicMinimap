@@ -1,7 +1,27 @@
-// Minimap and Radar
+// Real-time playtimer
+class UCMinimap_StaticHandler : StaticEventHandler
+{
+	transient CVar cv_playtime;
+	String curmap;
+	override void WorldLoaded(WorldEvent e)
+	{
+		PlayerInfo plr = players[consoleplayer];
+		if(!plr) return;
+		cv_playtime = CVar.GetCVar("ucm_map_playtime", plr);
+	
+		if((curmap != level.MapName || !e.IsSaveGame) && cv_playtime) 
+		{
+			cv_playtime.SetInt(0);
+			curmap = level.MapName;
+		}
+	}
+	override void WorldTick() { cv_playtime.SetInt(cv_playtime.getInt()+1); }
+}
 
+// Minimap and Radar
 class UCMinimap_EventHandler : EventHandler 
 {
+	int playtime_tics;
 	transient bool waypointmenu_forceopen;  // Triggers waypoint menu
 	transient bool waypointmenu_forceclose; 
 	ui transient Shape2D bg_circle;
@@ -26,6 +46,7 @@ class UCMinimap_EventHandler : EventHandler
 	private transient CVar cv_mapshowall;
 	private transient CVar cv_hidden;
 	private transient CVar cv_drawmap;
+	private transient CVar cv_hidemonsters;
 	private transient CVar cv_fullmapsize;
 	private transient CVar cv_maxmapsize;
 	private transient CVar cv_domaprotation;
@@ -38,6 +59,8 @@ class UCMinimap_EventHandler : EventHandler
 	private transient CVar cv_renderdistance;
 	private transient CVar cv_radardistance;
 	private transient CVar cv_switchdistance;
+	private transient CVar cv_drawitems;
+	private transient CVar cv_drawmissiles;
 	private transient CVar cv_color_normal; 
 	private transient CVar cv_color_solid; 
 	private transient CVar cv_color_action; 
@@ -47,6 +70,8 @@ class UCMinimap_EventHandler : EventHandler
 	private transient CVar cv_color_alpha;
 	private transient CVar cv_color_backgalpha;
 	private transient CVar cv_color_compass;
+	private transient CVar cv_color_stats;
+	private transient CVar cv_playtime;
 	private transient CVar wp_name;
 	private transient CVar wp_color;
 	
@@ -94,7 +119,11 @@ class UCMinimap_EventHandler : EventHandler
 		cv_color_lum		= CVar.GetCVar("ucm_color_lum", plr);
 		cv_color_alpha		= CVar.GetCVar("ucm_color_alpha", plr);
 		cv_color_backgalpha	= CVar.GetCVar("ucm_color_backgalpha", plr);
-		
+		cv_playtime  		= CVar.GetCVar("ucm_map_playtime", plr);
+		cv_color_stats 		= CVar.GetCVar("ucm_color_stats", plr);
+		cv_drawitems		= CVar.GetCVar("ucm_drawitems", plr);
+		cv_drawmissiles		= CVar.GetCVar("ucm_drawmissiles", plr);
+		cv_hidemonsters     = CVar.GetCVar("ucm_hidemonsters", plr); 
 		
 		wp_name  = CVar.GetCVar("waypoint_name", plr);
 		wp_color = CVar.GetCVar("waypoint_color", plr);
@@ -258,7 +287,7 @@ class UCMinimap_EventHandler : EventHandler
 		// Draw Border
 		if(!hidden && !fullmapsize)
 			drawCircle(map_middle.x,map_middle.y, MAP_SIZE+4, radrcol, line_alpha);
-		
+			
 		// Draw Switches
 		if(switchtex && rswitchtex && plrtex && !hidden)
 		{			
@@ -297,8 +326,12 @@ class UCMinimap_EventHandler : EventHandler
 			Actor obj;		
 			while(obj = Actor(act_it.Next()))
 			{		
+				let objItem = Inventory(obj);
 				if(maxdist <= 0) break;
-				if(!obj.bSHOOTABLE) continue;
+				if(!obj.bISMONSTER && !objItem && !obj.bMISSILE) continue;
+				if(obj.bMISSILE && !cv_drawmissiles.GetBool()) continue;
+				if( objItem && ( (!objItem.bCOUNTITEM && cv_drawitems.getInt() < 2) || !cv_drawitems.getInt() ) ) continue;
+					
 				double x = mappos.x - obj.pos.x;
 				double y = mappos.y - obj.pos.y;
 				
@@ -308,22 +341,38 @@ class UCMinimap_EventHandler : EventHandler
 					vector2 delta = Actor.RotateVector( SwapVector((x,y)), frontangle);
 					delta.x /= curzoom;
 					delta.y /= curzoom;
-					if( !(obj is plr.GetClass()) && obj.target )
+					bool hastarget = dontShowAll ? (obj.target != NULL) : true;
+					if( !(obj is plr.GetClass()) && (hastarget || objItem) )
 					{
 						vector2 finalpos = ((map_middle.x-delta.x), (map_middle.y-delta.y));
 						double drawdist; 
 						[finalpos, drawdist] = clamp_vec(finalpos, map_middle, MAP_SIZE-4);
 						
+						Color dColor = Color(90,0xFF,0,0);
 						double dAlpha = (drawdist>MAP_SIZE-4 ? 0.6 : 1.0);
 						double dScale = 2.0;
 						dScale *= size_mod;
-						Color dColor = Color(90,0xFF,0,0);
 						dScale *= clamp(1.0-(drawdist/512.), 0.5, 1.0);
 						dScale = clamp(dScale, 0.5, 3.0);
-						
-						bool hastarget = dontShowAll ? (obj.target != NULL) : true;
+						dScale /= (curzoom/5.);
+						if(obj.bISMONSTER) dScale = clamp(dScale, 0.5, 5.0);
 						if(obj.bFRIENDLY) dColor = Color(65, 0xFF, 0xFF, 0);
-						if(hastarget || obj.bFRIENDLY) 
+						bool radarvisible = drawdist<MAP_SIZE-4;
+						double angdiff = obj.bMISSILE ? 45*5 : (obj.angle-plr.AngleTo(obj))+90;
+						TextureID stex = obj.CurState.GetSpriteTexture(((angdiff+135)%361)/45);
+						curpix = stex;
+						if(!obj.bISMONSTER && radarvisible)
+						{
+							plotPixel(finalpos.x, finalpos.y, 0, (dScale,dScale)*0.2, dAlpha*line_alpha);
+						}
+						else if(obj.bISMONSTER && !cv_hidemonsters.GetBool())
+						{
+							if(obj.health > 0)
+								plotPixel(finalpos.x, finalpos.y, dColor, (dScale,dScale)*0.2, dAlpha*line_alpha);
+							else if(radarvisible)
+								plotPixel(finalpos.x, finalpos.y, 0, (dScale,dScale)*0.2, dAlpha*line_alpha);
+						}
+						else if(obj.bISMONSTER && obj.health > 0)
 						{
 							curpix = indpix;
 							plotPixel(finalpos.x, finalpos.y, dColor, (dScale,dScale), dAlpha*line_alpha);
@@ -385,12 +434,61 @@ class UCMinimap_EventHandler : EventHandler
 				vector2 westpos  = truemid+midoffs+(Actor.RotateVector((cradius,cradius)*0.78, frontangle-45-90 ));
 				uint ftrns = Font.CR_UNTRANSLATED;
 				DrawCircle(truemid.x, truemid.y, cradius*1.1, int(compasscol*0.5), 0.5);
+				if(fullmapsize)
+				{
+					DrawLine(northpos.x+6,northpos.y+5,southpos.x+6,southpos.y+5,compasscol,truemid,cradius*1.1);
+					DrawLine(eastpos.x+6,eastpos.y+5,westpos.x+6,westpos.y+5,compasscol,truemid,cradius*1.1);
+				}
 				Screen.DrawText("bigfont", ftrns, northpos.x, northpos.y, "N", DTA_ColorOverlay, compasscol);
 				Screen.DrawText("bigfont", ftrns, southpos.x, southpos.y, "S", DTA_ColorOverlay, compasscol);
 				Screen.DrawText("bigfont", ftrns,  eastpos.x,  eastpos.y, "E", DTA_ColorOverlay, compasscol);
 				Screen.DrawText("bigfont", ftrns,  westpos.x,  westpos.y, "W", DTA_ColorOverlay, compasscol);
 			}
 			
+			// Draw fullscreen text
+			if(fullmapsize)
+			{
+				Color txtcol = (0x90<<24) + cv_color_stats.GetInt();
+				Color percol = clamp(txtcol+0x00CCCCCC, txtcol, 0x90DDDDDD);
+				vector2 txtpos = (50/xres,360/yres);
+				vector2 txtdiff = (0,15/yres);
+				uint ftrns = Font.CR_UNTRANSLATED;
+				double killsper = (level.killed_monsters/double(level.total_monsters))*100;
+				double secretsper = (level.found_secrets/double(level.total_secrets))*100;
+				double itemsper = (level.found_items/double(level.total_items))*100;
+				double playhours   = cv_playtime.getInt()/(35*60*60);
+				double playminutes = cv_playtime.getInt()/(35*60) - (playhours*60);
+				double playseconds = cv_playtime.getInt()/35. - (playminutes*60) - (playhours*60*60);
+				string playtime = String.Format("Time: %.2d:%.2d:%.2d",playhours,playminutes,playseconds);
+				if(playhours >= 1) playtime = playtime .. " (SUCKS)"; 
+				string kills = String.Format("Kills %d/%d (%d%)", 
+					level.killed_monsters,level.total_monsters,
+					killsper
+				);
+				string secrets = String.Format("Secrets %d/%d (%d%)", 
+					level.found_secrets,level.total_secrets,
+					secretsper
+				);
+				string items = String.Format("Items %d/%d (%d%)", 
+					level.found_items,level.total_items,
+					itemsper
+				);
+				Screen.DrawText("bigfont", ftrns, txtpos.x,txtpos.y, kills, DTA_ColorOverlay, 
+					killsper >= 100 ? percol : txtcol
+				);
+				txtpos += txtdiff;
+				Screen.DrawText("bigfont", ftrns, txtpos.x,txtpos.y, secrets, DTA_ColorOverlay, 
+					secretsper >= 100 ? percol : txtcol
+				);
+				txtpos += txtdiff;
+				Screen.DrawText("bigfont", ftrns, txtpos.x,txtpos.y, items, DTA_ColorOverlay, 
+					itemsper >= 100 ? percol : txtcol
+				);
+				txtpos += txtdiff;
+				Screen.DrawText("bigfont", ftrns, txtpos.x,txtpos.y, playtime, DTA_ColorOverlay, 
+					playhours>=1 ? percol : txtcol
+				);
+			}
 		}
 		
 		// Delatime
@@ -439,7 +537,7 @@ class UCMinimap_EventHandler : EventHandler
 	{
 		PlayerInfo plr = players[consoleplayer];
 		if(!plr) return;
-	
+		
 		FindSwitches();		
 		let wp = I_WaypointStorage(plr.mo.FindInventory("I_WaypointStorage"));
 		if(wp) wp.waypoints.Clear();

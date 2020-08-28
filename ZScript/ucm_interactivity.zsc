@@ -93,6 +93,8 @@ extend class UCMinimap_EventHandler
 			cv_color_action.SetInt(0xCDCE00);
 			cv_color_border.SetInt(0x760000);
 			cv_color_backg.SetInt(0x000000);				
+			cv_color_compass.SetInt(0x1614D3);				
+			cv_color_stats.SetInt(0x1614D3);				
 		}
 	
 		if(e.Name == "align.upperleft")

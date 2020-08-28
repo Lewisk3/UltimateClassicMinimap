@@ -1,4 +1,4 @@
 GameInfo
 {
-	AddEventHandlers = "UCMinimap_EventHandler"
+	AddEventHandlers = "UCMinimap_EventHandler", "UCMinimap_StaticHandler"
 }

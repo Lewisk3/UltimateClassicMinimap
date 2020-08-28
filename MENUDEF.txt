@@ -29,6 +29,9 @@ OptionMenu "UCMOptions"
    Slider "Radar Zoom",	"ucm_radarzoom", 1, 100, 1, 0
    Slider "Radar range", "ucm_radardist", 0, 500, 1, 0
    StaticText "Maximum distance to display actors, 0 disables.","Black"
+   Option "Draw Items", "ucm_drawitems", "DrawItems"
+   Option "Draw Projectiles", "ucm_drawmissiles", "YesOrNo"
+   Option "Hide Enemy Types", "ucm_hidemonsters", "YesOrNo"
    StaticText " "
    StaticText "Minimap", "Gold"
    Option "Enabled", "ucm_drawmap", "YesOrNo"
@@ -58,6 +61,7 @@ OptionMenu "UCMOptions_Colors"
    ColorPicker "Map Border", "ucm_color_border"
    ColorPicker "Background", "ucm_color_backg"
    ColorPicker "Compass", "ucm_color_compas"
+   ColorPicker "Level Stats", "ucm_color_stats"
    StaticText " "
    Slider "Map Opacity",	"ucm_color_alpha", 0, 1.0, 0.01, 2
    Slider "Background Opacity",	"ucm_color_backgalpha", 0, 1.0, 0.01, 2
@@ -168,6 +172,13 @@ OptionValue "NoOrYes"
 OptionValue "RadarDisable"
 {
 	0, "Disabled"
+}
+
+OptionValue "DrawItems"
+{
+	0, "No"
+	1, "Yes, only counted items."
+	2, "Yes, all items."
 }
 
 OptionValue "Set"
