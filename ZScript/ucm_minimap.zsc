@@ -354,8 +354,8 @@ class UCMinimap_EventHandler : EventHandler
 						dScale *= size_mod;
 						dScale *= clamp(1.0-(drawdist/512.), 0.5, 1.0);
 						dScale = clamp(dScale, 0.5, 3.0);
-						dScale /= (curzoom/5.);
-						if(obj.bISMONSTER) dScale = clamp(dScale, 0.5, 5.0);
+						dScale /= (curzoom/6.);
+						if(obj.bISMONSTER || obj.bMISSILE) dScale = clamp(dScale, 1.0, 3.5);
 						if(obj.bFRIENDLY) dColor = Color(65, 0xFF, 0xFF, 0);
 						bool radarvisible = drawdist<MAP_SIZE-4;
 						double angdiff = obj.bMISSILE ? 45*5 : (obj.angle-plr.AngleTo(obj))+90;
@@ -363,7 +363,7 @@ class UCMinimap_EventHandler : EventHandler
 						curpix = stex;
 						if(!obj.bISMONSTER && radarvisible)
 						{
-							plotPixel(finalpos.x, finalpos.y, 0, (dScale,dScale)*0.2, dAlpha*line_alpha);
+							plotPixel(finalpos.x, finalpos.y, 0, (dScale,dScale)*(obj.bMISSILE ? 0.18 : 0.2), dAlpha*line_alpha);
 						}
 						else if(obj.bISMONSTER && !cv_hidemonsters.GetBool())
 						{
@@ -404,7 +404,7 @@ class UCMinimap_EventHandler : EventHandler
 			// Draw Player
 			if(cv_drawplayer.GetBool())
 			{
-				double plrscale = clamp(0.75*size_mod, 0.25, 2.0);
+				double plrscale = clamp(0.75*size_mod, 0.25, 1.0);
 				curpix = plrtex;
 				if(cv_mapfollow.GetBool())
 					plotPixel(map_middle.x-(16*plrscale),map_middle.y-(16*plrscale), scale:(plrscale,plrscale));
