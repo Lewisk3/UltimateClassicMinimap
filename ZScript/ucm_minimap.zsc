@@ -9,7 +9,7 @@ class UCMinimap_StaticHandler : StaticEventHandler
 		if(!plr) return;
 		cv_playtime = CVar.GetCVar("ucm_map_playtime", plr);
 	
-		if((curmap != level.MapName || !e.IsSaveGame) && cv_playtime) 
+		if(curmap != level.MapName && cv_playtime) 
 		{
 			cv_playtime.SetInt(0);
 			curmap = level.MapName;
@@ -61,6 +61,7 @@ class UCMinimap_EventHandler : EventHandler
 	private transient CVar cv_switchdistance;
 	private transient CVar cv_drawitems;
 	private transient CVar cv_drawmissiles;
+	private transient CVar cv_drawhealthbars;
 	private transient CVar cv_color_normal; 
 	private transient CVar cv_color_solid; 
 	private transient CVar cv_color_action; 
@@ -124,6 +125,7 @@ class UCMinimap_EventHandler : EventHandler
 		cv_drawitems		= CVar.GetCVar("ucm_drawitems", plr);
 		cv_drawmissiles		= CVar.GetCVar("ucm_drawmissiles", plr);
 		cv_hidemonsters     = CVar.GetCVar("ucm_hidemonsters", plr); 
+		cv_drawhealthbars   = CVar.GetCVar("ucm_drawhealthbars", plr); 
 		
 		wp_name  = CVar.GetCVar("waypoint_name", plr);
 		wp_color = CVar.GetCVar("waypoint_color", plr);
@@ -131,9 +133,9 @@ class UCMinimap_EventHandler : EventHandler
 	
 	override void WorldTick()
 	{
-		if((mapbtns & MBT_ZOOMIN) && cv_radarzoom.GetFloat() > 1) 
+		if((mapbtns & MBT_ZOOMIN) && cv_radarzoom.GetFloat() > 0.01) 
 			cv_radarzoom.SetFloat(cv_radarzoom.GetFloat()-0.1);
-		if((mapbtns & MBT_ZOOMOUT) && cv_radarzoom.GetFloat() < 100)
+		if((mapbtns & MBT_ZOOMOUT) && cv_radarzoom.GetFloat() < 500)
 			cv_radarzoom.SetFloat(cv_radarzoom.getFloat()+0.1);
 		
 		if(cv_xoffset.GetInt() < 0 && cv_yoffset.GetInt() < 0)
@@ -144,7 +146,18 @@ class UCMinimap_EventHandler : EventHandler
 	{
 		let plr = players[consoleplayer].mo;
 		if(!plr) return;	
-				
+		
+		// Deltatime
+		if(!prevMS)
+		{
+			prevMS = MSTime();
+			return;
+		}
+		double ftime = MSTime()-prevMS;
+		prevMS = MSTime();
+		double dtime = 1000.0 / 60.0;
+		deltatime = (ftime/dtime);
+			
 		// Setup
 		scrw = Screen.GetWidth();
 		scrh = Screen.GetHeight();
@@ -230,7 +243,8 @@ class UCMinimap_EventHandler : EventHandler
 		}
 		else
 		{
-			double movspd = plr.player.cmd.buttons & BT_SPEED ? 6 : 3;
+			double movspd = (plr.player.cmd.buttons & BT_SPEED ? 20 : 10) * deltatime;
+			movspd *= curzoom;
 			plr_rot = Lerp(plr_rot, 90, 0.25*deltatime);
 			if(mapbtns & MBT_UP    ) mappos.y += movspd;
 			if(mapbtns & MBT_DOWN  ) mappos.y -= movspd;
@@ -241,7 +255,7 @@ class UCMinimap_EventHandler : EventHandler
 		Vector2 map_middle = (dp.x-baseoffs.x+(156*size_mod),dp.y-baseoffs.y+(140*size_mod));
 		if(fullmapsize)
 		{
-			map_middle = (scrw/2., scrh/2.);
+			map_middle = (scrw/2., scrh/2.)-(0,90/yres);
 			baseoffs = map_middle;
 		}
 		
@@ -334,6 +348,7 @@ class UCMinimap_EventHandler : EventHandler
 					
 				double x = mappos.x - obj.pos.x;
 				double y = mappos.y - obj.pos.y;
+				uint renderstyle = obj.getRenderStyle();
 				
 				int dis = obj.Distance2D(plr);
 				if( dis < (maxdist*10.) )
@@ -349,7 +364,7 @@ class UCMinimap_EventHandler : EventHandler
 						[finalpos, drawdist] = clamp_vec(finalpos, map_middle, MAP_SIZE-4);
 						
 						Color dColor = Color(90,0xFF,0,0);
-						double dAlpha = (drawdist>MAP_SIZE-4 ? 0.6 : 1.0);
+						double dAlpha = obj.alpha * (drawdist>MAP_SIZE-4 ? 0.6 : 1.0);
 						double dScale = 2.0;
 						dScale *= size_mod;
 						dScale *= clamp(1.0-(drawdist/512.), 0.5, 1.0);
@@ -363,19 +378,30 @@ class UCMinimap_EventHandler : EventHandler
 						curpix = stex;
 						if(!obj.bISMONSTER && radarvisible)
 						{
-							plotPixel(finalpos.x, finalpos.y, 0, (dScale,dScale)*(obj.bMISSILE ? 0.18 : 0.2), dAlpha*line_alpha);
+							plotPixel(finalpos.x, finalpos.y, 0, (dScale,dScale)*(obj.bMISSILE ? 0.18 : 0.2), dAlpha*line_alpha, renderstyle);
 						}
 						else if(obj.bISMONSTER && !cv_hidemonsters.GetBool())
 						{
 							if(obj.health > 0)
-								plotPixel(finalpos.x, finalpos.y, dColor, (dScale,dScale)*0.2, dAlpha*line_alpha);
+								plotPixel(finalpos.x, finalpos.y, dColor, (dScale,dScale)*0.2, dAlpha*line_alpha, renderstyle);
 							else if(radarvisible)
-								plotPixel(finalpos.x, finalpos.y, 0, (dScale,dScale)*0.2, dAlpha*line_alpha);
+								plotPixel(finalpos.x, finalpos.y, 0, (dScale,dScale)*0.2, dAlpha*line_alpha, renderstyle);
 						}
 						else if(obj.bISMONSTER && obj.health > 0)
 						{
 							curpix = indpix;
-							plotPixel(finalpos.x, finalpos.y, dColor, (dScale,dScale), dAlpha*line_alpha);
+							plotPixel(finalpos.x, finalpos.y, dColor, (dScale,dScale), dAlpha*line_alpha, renderstyle);
+						}
+						if(obj.bISMONSTER && cv_drawhealthbars.getBool())
+						{
+							vector2 hbarpos = finalpos + (0, 5/size_mod)/yres;
+							double curhealth = clamp(obj.health / double(obj.GetMaxHealth()), 0, 1.0);
+							double healthmax = (20/xres) * curhealth;
+							Color hpcol_high = 0xFF00FF00;
+							Color hpcol_low  = 0xFFFF0000;
+							Color hpcol = int(Lerp(hpcol_high,hpcol_low,1. - curhealth));
+							Screen.DrawThickLine(hbarpos.x-healthmax/2,hbarpos.y,hbarpos.x+healthmax/2,hbarpos.y,7/xres,hpcol,floor(255*0.5));
+							//Screen.DrawThickLine(finalpos.x,finalpos.y-10,finalpos.x+20,finalpos.y-10,10,0xFFFF0000,255);
 						}
 					}
 				}
@@ -420,13 +446,18 @@ class UCMinimap_EventHandler : EventHandler
 						plotPixel(finalpos.x-(16*plrscale),finalpos.y-(16*plrscale), scale:(plrscale,plrscale));
 				}
 			}
-			// Draw Compass
+			// Draw Compass (Get normal map middle, when not scaled to fullscreen)
+			double normmapsize = cv_mapsize.getFloat();
+			double normsizemod = normmapsize/128.;
+			vector2 normoffs = ((25*normsizemod)-useroffs.x, (25*normsizemod)-useroffs.y);
+			vector2 normal_mapmiddle = (dp.x-normoffs.x+(156*normsizemod),dp.y-normoffs.y+(150*normsizemod));
+			normal_mapmiddle = (normal_mapmiddle.x/xres, normal_mapmiddle.y/yres);
 			if(cv_drawcompass.GetBool())
 			{
 				curpix = pix;
 				Color compasscol = (0x90 << 24) + cv_color_compass.GetInt();
 				double cradius = fullmapsize ? 128/xres : map_size;
-				vector2 truemid = fullmapsize ? (200/xres,200/yres) : map_middle;
+				vector2 truemid = fullmapsize ? normal_mapmiddle : map_middle;
 				vector2 midoffs = -(6,5);
 				vector2 northpos = truemid+midoffs+(Actor.RotateVector((cradius,cradius)*0.78, frontangle-45    ));
 				vector2 southpos = truemid+midoffs+(Actor.RotateVector((cradius,cradius)*0.78, frontangle-45+180));
@@ -450,8 +481,9 @@ class UCMinimap_EventHandler : EventHandler
 			{
 				Color txtcol = (0x90<<24) + cv_color_stats.GetInt();
 				Color percol = clamp(txtcol+0x00CCCCCC, txtcol, 0x90DDDDDD);
-				vector2 txtpos = (50/xres,360/yres);
-				vector2 txtdiff = (0,15/yres);
+				vector2 txtpos = (5,2);
+				vector2 txtdiff = (0,6);
+				vector2 txtscale = (0.7, 0.7);
 				uint ftrns = Font.CR_UNTRANSLATED;
 				double killsper = level.total_monsters ? level.killed_monsters/double(level.total_monsters)*100 : 100;
 				double secretsper = level.total_secrets ? (level.found_secrets/double(level.total_secrets))*100 : 100;
@@ -459,48 +491,40 @@ class UCMinimap_EventHandler : EventHandler
 				double playhours   = cv_playtime.getInt()/(35*60*60);
 				double playminutes = cv_playtime.getInt()/(35*60) - (playhours*60);
 				double playseconds = cv_playtime.getInt()/35. - (playminutes*60) - (playhours*60*60);
-				string playtime = String.Format("Time: %.2d:%.2d:%.2d",playhours,playminutes,playseconds);
-				if(playhours >= 1) playtime = playtime .. " (SUCKS)"; 
-				string kills = String.Format("Kills %d/%d (%d%)", 
+				string playtime = String.Format("Time: \c[Green]%.2d:%.2d:%.2d",playhours,playminutes,playseconds);
+				if(playhours >= 1) playtime = playtime .. "\c[Red](SUCKS)"; 
+				string kills = String.Format("Kills \c[Green]%d/%d (%d%)", 
 					level.killed_monsters,level.total_monsters,
 					killsper
 				);
-				string secrets = String.Format("Secrets %d/%d (%d%)", 
+				string secrets = String.Format("Secrets \c[Green]%d/%d (%d%)", 
 					level.found_secrets,level.total_secrets,
 					secretsper
 				);
-				string items = String.Format("Items %d/%d (%d%)", 
+				string items = String.Format("Items \c[Green]%d/%d (%d%)", 
 					level.found_items,level.total_items,
 					itemsper
 				);
-				Screen.DrawText("bigfont", ftrns, txtpos.x,txtpos.y, kills, DTA_ColorOverlay, 
-					killsper >= 100 ? percol : txtcol
+				string mapinfo = String.Format("\c[Red]%s: \c[White]%s", level.MapName, level.LevelName);
+				DrawScaledString("bigfont", kills, txtpos, 
+					killsper >= 100 ? percol : txtcol, txtscale
 				);
 				txtpos += txtdiff;
-				Screen.DrawText("bigfont", ftrns, txtpos.x,txtpos.y, secrets, DTA_ColorOverlay, 
-					secretsper >= 100 ? percol : txtcol
+				DrawScaledString("bigfont", secrets, txtpos,  
+					secretsper >= 100 ? percol : txtcol, txtscale
+				);
+				txtpos = (424,2);
+				DrawScaledString("bigfont", playtime, txtpos,  
+					playhours>=1 ? percol : txtcol, txtscale
 				);
 				txtpos += txtdiff;
-				Screen.DrawText("bigfont", ftrns, txtpos.x,txtpos.y, items, DTA_ColorOverlay, 
-					itemsper >= 100 ? percol : txtcol
+				DrawScaledString("bigfont", items, txtpos,  
+					itemsper >= 100 ? percol : txtcol, txtscale
 				);
-				txtpos += txtdiff;
-				Screen.DrawText("bigfont", ftrns, txtpos.x,txtpos.y, playtime, DTA_ColorOverlay, 
-					playhours>=1 ? percol : txtcol
-				);
+				txtpos = (213,7);
+				DrawScaledString("bigfont", mapinfo, txtpos, scale:txtscale);
 			}
 		}
-		
-		// Delatime
-		if(!prevMS)
-		{
-			prevMS = MSTime();
-			return;
-		}
-		double ftime = MSTime()-prevMS;
-		prevMS = MSTime();
-		double dtime = 1000.0 / 60.0;
-		deltatime = (ftime/dtime);
 		
 		// Waypoint menu
 		if(waypointmenu_forceclose)

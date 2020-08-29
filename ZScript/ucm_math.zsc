@@ -29,7 +29,7 @@ extend class UCMinimap_EventHandler
 		return dest, fulldist;
 	}
 	// Draw Util
-	ui void plotPixel (int x0, int y0, Color col = Color(0,0,0), vector2 scale = (0.5,0.5), double alpha = 1.0)
+	ui void plotPixel (int x0, int y0, Color col = Color(0,0,0), vector2 scale = (0.5,0.5), double alpha = 1.0, uint RenderStyle = STYLE_Normal)
 	{
 		if(pix)
 		{
@@ -39,7 +39,8 @@ extend class UCMinimap_EventHandler
 				DTA_DestWidth, int(texsize.x*scale.x),
 				DTA_DestHeight, int(texsize.y*scale.y),
 				DTA_ColorOverlay, col,
-				DTA_Alpha, alpha
+				DTA_Alpha, alpha,
+				DTA_LegacyRenderStyle, RenderStyle
 			);
 		}
 	}
@@ -113,8 +114,8 @@ extend class UCMinimap_EventHandler
 			 float lineoffs = (linespacing*i);
 			 Screen.DrawText(fnt, translation, pos.x, pos.y+lineoffs, 
 				lines[i],
-				DTA_VirtualWidthF,  int(320.*(1./scale.x*0.5)),
-				DTA_VirtualHeightF, int(200.*(1./scale.y*0.5)),
+				DTA_VirtualWidthF,  int(1920.*(1./scale.x*0.5)),
+				DTA_VirtualHeightF, int(1080.*(1./scale.y*0.5)),
 				DTA_KeepRatio, true,
 				DTA_Alpha, alpha,
 				DTA_ColorOverlay, tint
