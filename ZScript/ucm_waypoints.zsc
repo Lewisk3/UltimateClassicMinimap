@@ -55,4 +55,10 @@ class I_WaypointStorage : Inventory
 			}
 		}
 	}
+	clearscope WaypointObject FindNamedWaypoint(String nickname)
+	{
+		for(int i = 0; i < waypoints.Size(); i++)
+			if(nickname == waypoints[i].nickname) return waypoints[i];
+		return NULL;
+	}
 }

@@ -120,5 +120,25 @@ extend class UCMinimap_EventHandler
 			cv_xoffset.setInt(Screen.GetWidth()-faroffs);
 			cv_yoffset.setInt(Screen.GetHeight()-faroffs);
 		}
+		
+		// Argument based commands
+		string fullcmd = e.Name;
+		Array<String> cmds;
+		fullcmd.Split(cmds,":");
+		if(cmds[0] == "ucm.waypoint.create")
+		{
+			vector2 pos = (cmds[1].ToInt(), cmds[2].ToInt());
+			string label = cmds[3];	
+			Color col = cmds[4].ToInt(16);
+			
+			// Add waypoint to player data
+			let wp_data = I_WaypointStorage(plr.mo.FindInventory("I_WaypointStorage"));
+			if(!wp_data) 
+			{
+				plr.mo.GiveInventory("I_WaypointStorage", 1);
+				wp_data = I_WaypointStorage(plr.mo.FindInventory("I_WaypointStorage"));
+			}
+			if(wp_data) wp_data.AddWayPoint(label,col,pos);	
+		}
 	}
 }

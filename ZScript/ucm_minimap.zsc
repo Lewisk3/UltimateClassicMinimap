@@ -2,18 +2,25 @@
 class UCMinimap_StaticHandler : StaticEventHandler
 {
 	transient CVar cv_playtime;
+	transient CVar cv_mapdeaths;
 	String curmap;
 	override void WorldLoaded(WorldEvent e)
 	{
 		PlayerInfo plr = players[consoleplayer];
 		if(!plr) return;
 		cv_playtime = CVar.GetCVar("ucm_map_playtime", plr);
-	
-		if(curmap != level.MapName && cv_playtime) 
+		cv_mapdeaths = CVar.GetCVar("ucm_map_deaths", plr);
+		if(curmap != level.MapName && cv_playtime && cv_mapdeaths) 
 		{
 			cv_playtime.SetInt(0);
+			cv_mapdeaths.SetInt(0);
 			curmap = level.MapName;
 		}
+	}
+	override void WorldThingDied(WorldEvent e)
+	{
+		if(PlayerPawn(e.Thing)) 
+			cv_mapdeaths.SetInt(cv_mapdeaths.GetInt()+1);
 	}
 	override void WorldTick() { cv_playtime.SetInt(cv_playtime.getInt()+1); }
 }
@@ -62,6 +69,9 @@ class UCMinimap_EventHandler : EventHandler
 	private transient CVar cv_drawitems;
 	private transient CVar cv_drawmissiles;
 	private transient CVar cv_drawhealthbars;
+	private transient CVar cv_markstartandexit;
+	private transient CVar cv_mapdeaths;
+	private transient CVar cv_drawkeys;
 	private transient CVar cv_color_normal; 
 	private transient CVar cv_color_solid; 
 	private transient CVar cv_color_action; 
@@ -126,6 +136,9 @@ class UCMinimap_EventHandler : EventHandler
 		cv_drawmissiles		= CVar.GetCVar("ucm_drawmissiles", plr);
 		cv_hidemonsters     = CVar.GetCVar("ucm_hidemonsters", plr); 
 		cv_drawhealthbars   = CVar.GetCVar("ucm_drawhealthbars", plr); 
+		cv_markstartandexit = CVar.GetCVar("ucm_markstartexit", plr); 
+		cv_mapdeaths 		= CVar.GetCVar("ucm_map_deaths", plr);
+		cv_drawkeys         = CVar.GetCVar("ucm_drawkeys", plr);
 		
 		wp_name  = CVar.GetCVar("waypoint_name", plr);
 		wp_color = CVar.GetCVar("waypoint_color", plr);
@@ -341,17 +354,23 @@ class UCMinimap_EventHandler : EventHandler
 			while(obj = Actor(act_it.Next()))
 			{		
 				let objItem = Inventory(obj);
+				let objKey = Key(obj);
 				if(maxdist <= 0) break;
-				if(!obj.bISMONSTER && !objItem && !obj.bMISSILE) continue;
+				if(!obj.bISMONSTER && !objItem && !obj.bMISSILE && !objKey) continue;
 				if(obj.bMISSILE && !cv_drawmissiles.GetBool()) continue;
-				if( objItem && ( (!objItem.bCOUNTITEM && cv_drawitems.getInt() < 2) || !cv_drawitems.getInt() ) ) continue;
-					
-				double x = mappos.x - obj.pos.x;
-				double y = mappos.y - obj.pos.y;
+				if( objItem && !objKey && ( (!objItem.bCOUNTITEM && cv_drawitems.getInt() < 2) || !cv_drawitems.getInt() ) ) continue;
+				if( objItem && !cv_drawkeys.GetBool()) continue;
+				
+				double angdiff = obj.bMISSILE ? 45*5 : (obj.angle-plr.AngleTo(obj))+90;
+				TextureID stex = obj.CurState.GetSpriteTexture(((angdiff+135)%361)/45);
+				vector2 texsize;
+				[texsize.x, texsize.y] = TexMan.GetSize(stex);
+				double x = mappos.x - (obj.pos.x - (texsize.x/2.));
+				double y = mappos.y - (obj.pos.y - (texsize.y/2.));
 				uint renderstyle = obj.getRenderStyle();
 				
 				int dis = obj.Distance2D(plr);
-				if( dis < (maxdist*10.) )
+				if( dis < (maxdist*10.) || objKey )
 				{
 					vector2 delta = Actor.RotateVector( SwapVector((x,y)), frontangle);
 					delta.x /= curzoom;
@@ -367,18 +386,19 @@ class UCMinimap_EventHandler : EventHandler
 						double dAlpha = obj.alpha * (drawdist>MAP_SIZE-4 ? 0.6 : 1.0);
 						double dScale = 2.0;
 						dScale *= size_mod;
-						dScale *= clamp(1.0-(drawdist/512.), 0.5, 1.0);
+						dScale *= clamp(1.0-(drawdist/512.), objKey ? 0.75 : 0.35, 1.0);
 						dScale = clamp(dScale, 0.5, 3.0);
 						dScale /= (curzoom/6.);
 						if(obj.bISMONSTER || obj.bMISSILE) dScale = clamp(dScale, 1.0, 3.5);
 						if(obj.bFRIENDLY) dColor = Color(65, 0xFF, 0xFF, 0);
 						bool radarvisible = drawdist<MAP_SIZE-4;
-						double angdiff = obj.bMISSILE ? 45*5 : (obj.angle-plr.AngleTo(obj))+90;
-						TextureID stex = obj.CurState.GetSpriteTexture(((angdiff+135)%361)/45);
-						curpix = stex;
-						if(!obj.bISMONSTER && radarvisible)
+ 						curpix = stex;
+						if(!obj.bISMONSTER)
 						{
-							plotPixel(finalpos.x, finalpos.y, 0, (dScale,dScale)*(obj.bMISSILE ? 0.18 : 0.2), dAlpha*line_alpha, renderstyle);
+							if(!objKey && radarvisible)
+								plotPixel(finalpos.x, finalpos.y, 0, (dScale,dScale)*(obj.bMISSILE ? 0.18 : 0.2), dAlpha*line_alpha, renderstyle);
+							else if(objKey)
+								plotPixel(finalpos.x, finalpos.y, 0, (dScale,dScale)*0.25, dAlpha*line_alpha, renderstyle);
 						}
 						else if(obj.bISMONSTER && !cv_hidemonsters.GetBool())
 						{
@@ -392,14 +412,14 @@ class UCMinimap_EventHandler : EventHandler
 							curpix = indpix;
 							plotPixel(finalpos.x, finalpos.y, dColor, (dScale,dScale), dAlpha*line_alpha, renderstyle);
 						}
-						if(obj.bISMONSTER && cv_drawhealthbars.getBool())
+						if(obj.bISMONSTER && cv_drawhealthbars.getBool() && radarvisible)
 						{
 							vector2 hbarpos = finalpos + (0, 5/size_mod)/yres;
 							double curhealth = clamp(obj.health / double(obj.GetMaxHealth()), 0, 1.0);
 							double healthmax = (20/xres) * curhealth;
-							Color hpcol_high = 0xFF00FF00;
-							Color hpcol_low  = 0xFFFF0000;
-							Color hpcol = int(Lerp(hpcol_high,hpcol_low,1. - curhealth));
+							Color hpcol_high = 0x00FF00;
+							Color hpcol_low  = 0xFF0000;
+							Color hpcol = (0xFF<<24) + int(Lerp(hpcol_high,hpcol_low,1. - curhealth));
 							Screen.DrawThickLine(hbarpos.x-healthmax/2,hbarpos.y,hbarpos.x+healthmax/2,hbarpos.y,7/xres,hpcol,floor(255*0.5));
 							//Screen.DrawThickLine(finalpos.x,finalpos.y-10,finalpos.x+20,finalpos.y-10,10,0xFFFF0000,255);
 						}
@@ -523,6 +543,8 @@ class UCMinimap_EventHandler : EventHandler
 				);
 				txtpos = (213,7);
 				DrawScaledString("bigfont", mapinfo, txtpos, scale:txtscale);
+				txtpos += txtdiff;
+				DrawScaledString("bigfont", "Deaths: \c[Red]" .. cv_mapdeaths.getInt(), txtpos, txtcol, txtscale);
 			}
 		}
 		
@@ -557,6 +579,17 @@ class UCMinimap_EventHandler : EventHandler
 			}
 		}
 	}
+	bool, vector2 GetSpecialLinePos(uint special)
+	{
+		for(uint i = 0; i < Level.Lines.Size(); i++)
+		{
+			Line ln = Level.Lines[i];
+			if(ln.special != special) continue;
+			return true, (ln.v1.p.x/2 + ln.v2.p.x/2, ln.v2.p.y/2 + ln.v2.p.y/2);
+		}
+		return false, (0, 0);
+	}
+	
 	override void WorldLoaded(WorldEvent e)
 	{
 		PlayerInfo plr = players[consoleplayer];
@@ -564,6 +597,24 @@ class UCMinimap_EventHandler : EventHandler
 		
 		FindSwitches();		
 		let wp = I_WaypointStorage(plr.mo.FindInventory("I_WaypointStorage"));
-		if(wp) wp.waypoints.Clear();
+		if(wp) 
+			wp.waypoints.Clear();
+		else
+		{
+			plr.mo.GiveInventory("I_WaypointStorage", 1);
+			wp = I_WaypointStorage(plr.mo.FindInventory("I_WaypointStorage"));
+		}
+		
+		// Create start and end waypoints.
+		if(wp && cv_markstartandexit.GetBool())
+		{
+			bool _exitpos;
+			vector2 exitpos; 
+			[_exitpos, exitpos] = GetSpecialLinePos(243);
+			if(!wp.FindNamedWaypoint("Start")) 
+				wp.AddWaypoint("Start", 0xFF00FF00, plr.mo.pos.xy);
+			if(!wp.FindNamedWaypoint("Exit") && _exitpos) 
+				wp.AddWaypoint("Exit", 0xFFFF0000, exitpos);
+		}
 	}
 }

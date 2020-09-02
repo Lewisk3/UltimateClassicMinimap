@@ -32,6 +32,7 @@ OptionMenu "UCMOptions"
    Option "Draw Items", "ucm_drawitems", "DrawItems"
    Option "Draw Projectiles", "ucm_drawmissiles", "YesOrNo"
    Option "Draw Enemy Healthbars", "ucm_drawhealthbars", "YesOrNo"
+   Option "Draw Keys", "ucm_drawkeys", "YesOrNo"
    Option "Hide Enemy Types", "ucm_hidemonsters", "YesOrNo"
    StaticText " "
    StaticText "Minimap", "Gold"
@@ -39,6 +40,9 @@ OptionMenu "UCMOptions"
    Option "Rotate with Player", "ucm_drawrotation", "YesOrNo"
    Slider "Minimap Render Distance", "ucm_maprenderdist", 128, 8192, 1, 0 
    SubMenu "Map Colors", "UCMOptions_Colors"
+   StaticText " "
+   StaticText "Waypoint Options", "Gold"
+   Option "Mark Map \"Start\" and \"Exit\"", "ucm_markstartexit", "YesOrNo"
    StaticText " "
 }
 
