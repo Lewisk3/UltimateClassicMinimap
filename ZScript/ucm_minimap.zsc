@@ -354,11 +354,11 @@ class UCMinimap_EventHandler : EventHandler
 			while(obj = Actor(act_it.Next()))
 			{		
 				let objItem = Inventory(obj);
-				let objKey = Key(obj);
+				bool isKey = obj is "Key";
 				if(maxdist <= 0) break;
-				if(!obj.bISMONSTER && !objItem && !obj.bMISSILE && !objKey) continue;
+				if(!obj.bISMONSTER && !objItem && !obj.bMISSILE && !isKey) continue;
 				if(obj.bMISSILE && !cv_drawmissiles.GetBool()) continue;
-				if( objItem && !objKey && ( (!objItem.bCOUNTITEM && cv_drawitems.getInt() < 2) || !cv_drawitems.getInt() ) ) continue;
+				if( objItem && !isKey && ( (!objItem.bCOUNTITEM && cv_drawitems.getInt() < 2) || !cv_drawitems.getInt() ) ) continue;
 				if( objItem && !cv_drawkeys.GetBool()) continue;
 				
 				double angdiff = obj.bMISSILE ? 45*5 : (obj.angle-plr.AngleTo(obj))+90;
@@ -370,7 +370,7 @@ class UCMinimap_EventHandler : EventHandler
 				uint renderstyle = obj.getRenderStyle();
 				
 				int dis = obj.Distance2D(plr);
-				if( dis < (maxdist*10.) || objKey )
+				if( dis < (maxdist*10.) || isKey )
 				{
 					vector2 delta = Actor.RotateVector( SwapVector((x,y)), frontangle);
 					delta.x /= curzoom;
@@ -386,7 +386,7 @@ class UCMinimap_EventHandler : EventHandler
 						double dAlpha = obj.alpha * (drawdist>MAP_SIZE-4 ? 0.6 : 1.0);
 						double dScale = 2.0;
 						dScale *= size_mod;
-						dScale *= clamp(1.0-(drawdist/512.), objKey ? 0.75 : 0.35, 1.0);
+						dScale *= clamp(1.0-(drawdist/512.), isKey ? 0.75 : 0.35, 1.0);
 						dScale = clamp(dScale, 0.5, 3.0);
 						dScale /= (curzoom/6.);
 						if(obj.bISMONSTER || obj.bMISSILE) dScale = clamp(dScale, 1.0, 3.5);
@@ -395,9 +395,10 @@ class UCMinimap_EventHandler : EventHandler
  						curpix = stex;
 						if(!obj.bISMONSTER)
 						{
-							if(!objKey && radarvisible)
+							dScale = clamp(dScale, isKey ? 5.0 : 1.0, isKey ? 10.0 : 5.0);
+							if(!isKey && radarvisible)
 								plotPixel(finalpos.x, finalpos.y, 0, (dScale,dScale)*(obj.bMISSILE ? 0.18 : 0.2), dAlpha*line_alpha, renderstyle);
-							else if(objKey)
+							else if(isKey)
 								plotPixel(finalpos.x, finalpos.y, 0, (dScale,dScale)*0.25, dAlpha*line_alpha, renderstyle);
 						}
 						else if(obj.bISMONSTER && !cv_hidemonsters.GetBool())
