@@ -607,7 +607,7 @@ class UCMinimap_EventHandler : EventHandler
 		}
 		
 		// Create start and end waypoints.
-		if(wp && cv_markstartandexit.GetBool())
+		if(cv_markstartandexit && wp && cv_markstartandexit.GetBool())
 		{
 			bool _exitpos;
 			vector2 exitpos; 
