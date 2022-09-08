@@ -29,7 +29,7 @@ extend class UCMinimap_EventHandler
 		return dest, fulldist;
 	}
 	// Draw Util
-	ui void plotPixel (int x0, int y0, Color col = Color(0,0,0), vector2 scale = (0.5,0.5), double alpha = 1.0, uint RenderStyle = STYLE_Normal)
+	ui void plotPixel (int x0, int y0, Color col = Color(0,0,0), vector2 scale = (0.5,0.5), double alpha = 1.0, uint RenderStyle = STYLE_Translucent)
 	{
 		if(pix)
 		{
@@ -38,8 +38,8 @@ extend class UCMinimap_EventHandler
 			Screen.DrawTexture(curpix,true,x0,y0,
 				DTA_DestWidth, int(texsize.x*scale.x),
 				DTA_DestHeight, int(texsize.y*scale.y),
+				DTA_Alpha, alpha*0.7,
 				DTA_ColorOverlay, col,
-				DTA_Alpha, alpha,
 				DTA_LegacyRenderStyle, RenderStyle
 			);
 		}
