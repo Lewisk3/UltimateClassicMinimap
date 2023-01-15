@@ -18,7 +18,7 @@ OptionMenu "UCMOptions"
    Option "Draw Player", "ucm_drawplayer", "YesOrNo"
    StaticText " "
    Slider "X Position",	"ucm_xoffset", -30, 9999, 1, 0
-   Slider "X Position",	"ucm_yoffset", -30, 9999, 1, 0
+   Slider "Y Position",	"ucm_yoffset", -30, 9999, 1, 0
    SubMenu "Map Alignment", "UCMOptions_Alignment"
    StaticText " "
    Slider "Size", "ucm_mapsize", 32, 512, 1, 0
