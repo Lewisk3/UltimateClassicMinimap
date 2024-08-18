@@ -158,7 +158,7 @@ class UCMinimap_EventHandler : EventHandler
 	override void RenderOverlay(RenderEvent e)
 	{
 		let plr = players[consoleplayer].mo;
-		if(!plr) return;	
+		if(!plr || gamestate != GS_LEVEL) return;	
 		
 		// Deltatime
 		if(!prevMS)
