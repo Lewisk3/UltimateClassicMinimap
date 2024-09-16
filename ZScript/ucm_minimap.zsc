@@ -158,7 +158,7 @@ class UCMinimap_EventHandler : EventHandler
 	override void RenderOverlay(RenderEvent e)
 	{
 		let plr = players[consoleplayer].mo;
-		if(!plr) return;	
+		if(!plr || gamestate != GS_LEVEL) return;	
 		
 		// Deltatime
 		if(!prevMS)
@@ -208,6 +208,7 @@ class UCMinimap_EventHandler : EventHandler
 			mappos = plr.pos.xy;
 			size_mod = map_size/128.;
 			plr_rot = plr.angle;
+			if(plr.player.camera) plr_rot = plr.player.camera.angle;
 			baseoffs = ((25*size_mod)-useroffs.x, (25*size_mod)-useroffs.y);
 			curzoom = cv_radarzoom.GetFloat();
 		}
@@ -251,6 +252,10 @@ class UCMinimap_EventHandler : EventHandler
 		if(cv_mapfollow.GetBool())
 		{
 			plr_rot = Lerp(plr_rot, domaprotation ? plr.angle : 90, 0.5*deltatime);
+			if(plr.player.camera)
+			{
+				plr_rot = (domaprotation ? plr.player.camera.angle : 90); // Do not Lerp
+			}
 			mappos.x = Lerp(mappos.x, plr.pos.x, 0.5*deltatime);
 			mappos.y = Lerp(mappos.y, plr.pos.y, 0.5*deltatime);
 		}
